@@ -102,37 +102,37 @@ export const Scheduler: React.FC<SchedulerProps> = ({ onPostNow, onSchedulePost,
   const actionButtonsDisabled = disabled || !isFacebookLinked;
 
   return (
-    <div className="bg-gray-700/50 rounded-lg p-4 space-y-4">
+    <div className="bg-slate-700/50 rounded-lg p-4 space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           onClick={onPostNow}
           disabled={actionButtonsDisabled}
-          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-md transition duration-200 text-center"
+          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-md transition duration-200 text-center"
         >
           Publicar Ahora
         </button>
         <button
           onClick={() => setIsScheduling(!isScheduling)}
           disabled={actionButtonsDisabled}
-          className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-md transition duration-200 text-center"
+          className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-md transition duration-200 text-center"
         >
           {isScheduling ? 'Cancelar Programación' : 'Programar Publicación'}
         </button>
       </div>
 
       {isScheduling && (
-        <div className="border-t border-gray-600 pt-4 space-y-4 animate-fade-in">
+        <div className="border-t border-slate-600 pt-4 space-y-4 animate-fade-in">
           {/* Tabs */}
-          <div className="flex bg-gray-800 rounded-lg p-1">
+          <div className="flex bg-slate-800 rounded-lg p-1">
             <button 
               onClick={() => setScheduleType(ScheduleType.SPECIFIC_DAYS)}
-              className={`w-full text-center py-2 rounded-md text-sm font-semibold transition-colors ${scheduleType === ScheduleType.SPECIFIC_DAYS ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+              className={`w-full text-center py-2 rounded-md text-sm font-semibold transition-colors ${scheduleType === ScheduleType.SPECIFIC_DAYS ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}
             >
               Días Específicos
             </button>
             <button 
               onClick={() => setScheduleType(ScheduleType.INTERVAL)}
-              className={`w-full text-center py-2 rounded-md text-sm font-semibold transition-colors ${scheduleType === ScheduleType.INTERVAL ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+              className={`w-full text-center py-2 rounded-md text-sm font-semibold transition-colors ${scheduleType === ScheduleType.INTERVAL ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}
             >
               Por Intervalo
             </button>
@@ -141,7 +141,7 @@ export const Scheduler: React.FC<SchedulerProps> = ({ onPostNow, onSchedulePost,
           {scheduleType === ScheduleType.INTERVAL && (
             <div className="space-y-4 p-2">
               <div className="flex items-center gap-4">
-                <label htmlFor="frequency" className="text-sm font-medium text-gray-300 whitespace-nowrap">
+                <label htmlFor="frequency" className="text-sm font-medium text-slate-300 whitespace-nowrap">
                   Publicar cada
                 </label>
                 <input
@@ -149,9 +149,9 @@ export const Scheduler: React.FC<SchedulerProps> = ({ onPostNow, onSchedulePost,
                   id="frequency"
                   value={frequency}
                   onChange={(e) => setFrequency(Math.max(1, parseInt(e.target.value, 10)))}
-                  className="w-24 bg-gray-900 border border-gray-600 rounded-md p-2 text-white text-center"
+                  className="w-24 bg-slate-900 border border-slate-600 rounded-md p-2 text-white text-center"
                 />
-                <span className="text-sm text-gray-300">minutos</span>
+                <span className="text-sm text-slate-300">minutos</span>
               </div>
 
               <div className="flex items-center gap-3">
@@ -160,9 +160,9 @@ export const Scheduler: React.FC<SchedulerProps> = ({ onPostNow, onSchedulePost,
                   id="randomize"
                   checked={randomize}
                   onChange={(e) => setRandomize(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 bg-gray-700"
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 bg-slate-700"
                 />
-                <label htmlFor="randomize" className="text-sm font-medium text-gray-300">
+                <label htmlFor="randomize" className="text-sm font-medium text-slate-300">
                   Añadir retraso aleatorio (Recomendado)
                 </label>
               </div>
@@ -172,23 +172,23 @@ export const Scheduler: React.FC<SchedulerProps> = ({ onPostNow, onSchedulePost,
           {scheduleType === ScheduleType.SPECIFIC_DAYS && (
             <div className="space-y-4 p-2">
               {patterns.map((pattern, index) => (
-                <div key={pattern.id} className="bg-gray-900/50 p-4 rounded-lg space-y-3 relative">
-                  <p className="text-sm font-semibold text-gray-200">Patrón de Publicación #{index + 1}</p>
+                <div key={pattern.id} className="bg-slate-900/50 p-4 rounded-lg space-y-3 relative">
+                  <p className="text-sm font-semibold text-slate-200">Patrón de Publicación #{index + 1}</p>
                    <button 
                       onClick={() => removePattern(pattern.id)} 
-                      className="absolute top-2 right-2 text-gray-500 hover:text-red-400 transition-colors"
+                      className="absolute top-2 right-2 text-slate-500 hover:text-red-400 transition-colors"
                       aria-label="Eliminar patrón"
                     >
                         <Icon name="trash" size={5} />
                     </button>
                   <div>
-                    <label className="text-xs font-medium text-gray-400 block mb-2">Días</label>
+                    <label className="text-xs font-medium text-slate-400 block mb-2">Días</label>
                     <div className="flex justify-start gap-1 sm:gap-2">
                       {weekDays.map(day => (
                         <button 
                           key={day.value}
                           onClick={() => handleDayToggle(pattern.id, day.value)}
-                          className={`h-8 w-8 text-xs sm:h-9 sm:w-9 sm:text-sm rounded-full font-bold transition-colors ${pattern.days.includes(day.value) ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+                          className={`h-8 w-8 text-xs sm:h-9 sm:w-9 sm:text-sm rounded-full font-bold transition-colors ${pattern.days.includes(day.value) ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
                         >
                           {day.label}
                         </button>
@@ -196,19 +196,19 @@ export const Scheduler: React.FC<SchedulerProps> = ({ onPostNow, onSchedulePost,
                     </div>
                   </div>
                    <div>
-                    <label htmlFor={`times-${pattern.id}`} className="text-xs font-medium text-gray-400 block mb-2">Horas (HH:MM, separado por comas)</label>
+                    <label htmlFor={`times-${pattern.id}`} className="text-xs font-medium text-slate-400 block mb-2">Horas (HH:MM, separado por comas)</label>
                      <input
                       type="text"
                       id={`times-${pattern.id}`}
                       value={pattern.times.join(', ')}
                       onChange={(e) => handleTimesChange(pattern.id, e.target.value)}
                       placeholder="Ej: 08:00, 12:30, 19:00"
-                      className="w-full bg-gray-800 border border-gray-600 rounded-md p-2 text-white text-sm"
+                      className="w-full bg-slate-800 border border-slate-600 rounded-md p-2 text-white text-sm"
                     />
                   </div>
                 </div>
               ))}
-               <button onClick={addPattern} className="w-full text-sm font-semibold text-blue-400 hover:text-blue-300 bg-gray-800 hover:bg-gray-700/50 py-2 px-4 rounded-md transition duration-200">
+               <button onClick={addPattern} className="w-full text-sm font-semibold text-blue-400 hover:text-blue-300 bg-slate-800 hover:bg-slate-700/50 py-2 px-4 rounded-md transition duration-200">
                     + Añadir Patrón de Publicación
                 </button>
             </div>

@@ -26,12 +26,12 @@ const PostItem: React.FC<{ post: ScheduledPost }> = ({ post }) => {
   const publishDate = new Date(post.publishAt);
 
   return (
-    <li className="flex items-center justify-between p-3 bg-gray-800/50 rounded-md hover:bg-gray-700/50 transition-colors duration-200">
+    <li className="flex items-center justify-between p-3 bg-slate-800/50 rounded-md hover:bg-slate-700/50 transition-colors duration-200">
       <div className="flex items-center gap-4 overflow-hidden">
         {statusIndicator[post.status]}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-white truncate">{textSnippet || "Publicación con multimedia"}</p>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-slate-400">
             {post.status === PostStatus.SCHEDULED ? 'Próxima publicación: ' : 'Publicado: '} 
             {publishDate.toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}
           </p>
@@ -54,7 +54,7 @@ const PostList: React.FC<{posts: ScheduledPost[], emptyMessage: string}> = ({pos
       {posts.length > 0 ? (
         posts.map(p => <PostItem key={p.id} post={p} />)
       ) : (
-        <div className="text-center py-20 text-gray-500">{emptyMessage}</div>
+        <div className="text-center py-20 text-slate-500">{emptyMessage}</div>
       )}
     </div>
 );
@@ -70,15 +70,15 @@ export const Content: React.FC<ContentProps> = ({ scheduledPosts, history, isFac
   ]
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-xl p-6 h-full flex flex-col relative">
+    <div className="bg-slate-800 rounded-lg shadow-xl p-6 h-full flex flex-col relative">
         {!isFacebookLinked && <ConnectOverlay />}
         {/* Tabs */}
-        <div className="flex border-b border-gray-700">
+        <div className="flex border-b border-slate-700">
             {tabs.map(tab => (
                  <button 
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${activeTab === tab.id ? 'border-b-2 border-blue-500 text-white' : 'text-gray-400 hover:text-white'}`}
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${activeTab === tab.id ? 'border-b-2 border-blue-500 text-white' : 'text-slate-400 hover:text-white'}`}
                 >
                     <Icon name={tab.icon} size={5} />
                     {tab.label}

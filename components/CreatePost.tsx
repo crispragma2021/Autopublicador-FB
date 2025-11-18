@@ -155,10 +155,10 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
     <div className="relative">
       {!isFacebookLinked && <ConnectOverlay />}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        <div className="lg:col-span-3 bg-gray-800 rounded-lg shadow-xl p-6 space-y-6 h-fit">
+        <div className="lg:col-span-3 bg-slate-800 rounded-lg shadow-xl p-6 space-y-6 h-fit">
           {/* IA Prompt Input */}
           <div className="space-y-2">
-            <label htmlFor="prompt" className="block text-sm font-medium text-gray-300">
+            <label htmlFor="prompt" className="block text-sm font-medium text-slate-300">
               1. Describe tu idea para la IA
             </label>
             <div className="relative">
@@ -167,7 +167,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Ej: 'Una oferta de verano para helados artesanales'"
-                className="w-full bg-gray-900 border border-gray-700 rounded-md p-3 text-white focus:ring-2 focus:ring-blue-500 transition duration-200"
+                className="w-full bg-slate-900 border border-slate-700 rounded-md p-3 text-white focus:ring-2 focus:ring-blue-500 transition duration-200"
                 rows={2}
               />
             </div>
@@ -175,44 +175,44 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
           
           {/* AI Generation Buttons */}
           <div className="space-y-2">
-            <p className="block text-sm font-medium text-gray-300">
+            <p className="block text-sm font-medium text-slate-300">
               2. Genera el contenido
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button onClick={handleGenerateText} disabled={!prompt || textGenStatus === GenerationStatus.LOADING} className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+              <button onClick={handleGenerateText} disabled={!prompt || textGenStatus === GenerationStatus.LOADING} className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-bold py-2 px-4 rounded-md transition duration-200">
                 {textGenStatus === GenerationStatus.LOADING ? <Spinner/> : <Icon name="text" />} Texto
               </button>
-              <button onClick={handleGenerateImage} disabled={!prompt || imageGenStatus === GenerationStatus.LOADING || videoGenStatus === GenerationStatus.LOADING} className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+              <button onClick={handleGenerateImage} disabled={!prompt || imageGenStatus === GenerationStatus.LOADING || videoGenStatus === GenerationStatus.LOADING} className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-600 text-white font-bold py-2 px-4 rounded-md transition duration-200">
                 {imageGenStatus === GenerationStatus.LOADING ? <Spinner/> : <Icon name="image" />} Imagen
               </button>
-              <button onClick={handleGenerateVideo} disabled={!prompt || videoGenStatus === GenerationStatus.LOADING || imageGenStatus === GenerationStatus.LOADING} className="flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-600 disabled:bg-gray-600 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+              <button onClick={handleGenerateVideo} disabled={!prompt || videoGenStatus === GenerationStatus.LOADING || imageGenStatus === GenerationStatus.LOADING} className="flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-600 disabled:bg-slate-600 text-white font-bold py-2 px-4 rounded-md transition duration-200">
                 {videoGenStatus === GenerationStatus.LOADING ? <Spinner/> : <Icon name="video" />} Video
               </button>
             </div>
           </div>
 
           {videoGenStatus === GenerationStatus.LOADING && (
-              <div className="text-center p-4 bg-gray-700 rounded-lg">
+              <div className="text-center p-4 bg-slate-700 rounded-lg">
                   <div className="flex justify-center items-center gap-4 mb-2">
                     <p className="text-teal-300 animate-pulse">{videoLoadingMessage}</p>
-                    <span className="text-sm font-mono bg-gray-900 text-white py-1 px-2 rounded">{formatTime(videoGenElapsedTime)}</span>
+                    <span className="text-sm font-mono bg-slate-900 text-white py-1 px-2 rounded">{formatTime(videoGenElapsedTime)}</span>
                   </div>
-                  <p className="text-sm text-gray-400 mt-1">La generación de video puede tardar varios minutos.</p>
+                  <p className="text-sm text-slate-400 mt-1">La generación de video puede tardar varios minutos.</p>
               </div>
           )}
 
           {/* Post Content Area */}
           <div className="space-y-2">
-            <p className="block text-sm font-medium text-gray-300">
+            <p className="block text-sm font-medium text-slate-300">
               3. Revisa y edita tu publicación
             </p>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Escribe tu publicación aquí o genera el texto con IA..."
-              className="w-full h-32 bg-gray-900 border border-gray-700 rounded-md p-3 text-white focus:ring-2 focus:ring-blue-500 transition duration-200"
+              className="w-full h-32 bg-slate-900 border border-slate-700 rounded-md p-3 text-white focus:ring-2 focus:ring-blue-500 transition duration-200"
             />
-            <div className="flex justify-between items-center text-sm text-gray-400">
+            <div className="flex justify-between items-center text-sm text-slate-400">
               <label htmlFor="file-upload" className="cursor-pointer text-blue-400 hover:text-blue-300 font-medium flex items-center gap-2">
                   <Icon name="upload" /> Subir archivo
                 </label>
@@ -225,7 +225,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
         </div>
         <div className="lg:col-span-2 space-y-6">
           {/* Post Preview */}
-          <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+          <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
             <h3 className="text-lg font-semibold mb-3 text-white">Vista Previa</h3>
             <PostPreview post={post} />
           </div>

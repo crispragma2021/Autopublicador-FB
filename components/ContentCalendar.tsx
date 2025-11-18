@@ -35,27 +35,27 @@ export const ContentCalendar: React.FC<ContentCalendarProps> = ({ posts }) => {
   const weekDays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
   return (
-    <div className="bg-gray-800/50 p-4 rounded-lg">
+    <div className="bg-slate-800/50 p-4 rounded-lg">
       <div className="flex justify-between items-center mb-4">
-        <button onClick={() => changeMonth(-1)} className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">&lt;</button>
+        <button onClick={() => changeMonth(-1)} className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600">&lt;</button>
         <h3 className="text-lg font-bold text-white">
           {currentDate.toLocaleString('es-ES', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())}
         </h3>
-        <button onClick={() => changeMonth(1)} className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">&gt;</button>
+        <button onClick={() => changeMonth(1)} className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600">&gt;</button>
       </div>
 
       <div className="grid grid-cols-7 gap-2">
-        {weekDays.map(day => <div key={day} className="text-center text-xs font-bold text-gray-400">{day}</div>)}
+        {weekDays.map(day => <div key={day} className="text-center text-xs font-bold text-slate-400">{day}</div>)}
         {blanks.map(b => <div key={`blank-${b}`} />)}
         {days.map(day => (
-          <div key={day} className="relative aspect-square bg-gray-900/50 rounded p-1.5 text-sm text-left align-top">
+          <div key={day} className="relative aspect-square bg-slate-900/50 rounded p-1.5 text-sm text-left align-top">
             <span className={new Date().getDate() === day && new Date().getMonth() === currentDate.getMonth() ? "bg-blue-600 rounded-full h-6 w-6 flex items-center justify-center text-white" : ""}>
                 {day}
             </span>
             {postsByDay[day] && (
               <div className="absolute bottom-1.5 left-1.5 flex gap-1">
                 {postsByDay[day].slice(0, 3).map(post => {
-                  let color = 'bg-gray-500';
+                  let color = 'bg-slate-500';
                   if (post.status === PostStatus.SCHEDULED) color = 'bg-yellow-400';
                   if (post.status === PostStatus.PUBLISHED) color = 'bg-green-400';
                   if (post.status === PostStatus.FAILED) color = 'bg-red-400';

@@ -164,7 +164,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 font-sans flex">
+    <div className="min-h-screen bg-slate-900 text-slate-200 font-sans flex">
       <Navigation 
         currentView={view} 
         setView={setView} 

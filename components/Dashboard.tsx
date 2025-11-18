@@ -17,10 +17,10 @@ const PostItem: React.FC<{ post: ScheduledPost }> = ({ post }) => {
   const publishDate = new Date(post.publishAt);
 
   return (
-    <li className="flex items-center justify-between py-2 border-b border-gray-700/50">
+    <li className="flex items-center justify-between py-2 border-b border-slate-700/50">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white truncate">{textSnippet || "Publicación con multimedia"}</p>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-slate-400">
           {publishDate.toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
@@ -59,7 +59,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ scheduledPosts, history, c
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Próximas Publicaciones */}
-            <div className="bg-gray-800 rounded-lg shadow-xl p-6">
+            <div className="bg-slate-800 rounded-lg shadow-xl p-6">
                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <Icon name="clock" /> Próximamente
                 </h3>
@@ -68,9 +68,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ scheduledPosts, history, c
                         {upcomingPosts.map(p => <PostItem key={p.id} post={p} />)}
                     </ul>
                 ) : (
-                    <div className="text-center py-10 text-gray-500">
+                    <div className="text-center py-10 text-slate-500">
                         <p className="mb-4">No hay publicaciones en la cola.</p>
-                        <button onClick={createPost} disabled={!isFacebookLinked} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                        <button onClick={createPost} disabled={!isFacebookLinked} className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-md transition duration-200">
                             Crear una ahora
                         </button>
                     </div>
@@ -78,7 +78,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ scheduledPosts, history, c
             </div>
 
             {/* Actividad Reciente */}
-             <div className="bg-gray-800 rounded-lg shadow-xl p-6">
+             <div className="bg-slate-800 rounded-lg shadow-xl p-6">
                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <Icon name="history" /> Actividad Reciente
                 </h3>
@@ -87,7 +87,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ scheduledPosts, history, c
                         {recentActivity.map(p => <PostItem key={p.id} post={p} />)}
                     </ul>
                 ) : (
-                    <div className="text-center py-10 text-gray-500">
+                    <div className="text-center py-10 text-slate-500">
                        <p>No hay actividad reciente.</p>
                     </div>
                 )}

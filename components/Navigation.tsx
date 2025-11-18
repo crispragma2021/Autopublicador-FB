@@ -19,7 +19,7 @@ const navItems: { view: AppView; label: string; icon: string }[] = [
 
 export const Navigation: React.FC<NavigationProps> = ({ currentView, setView, isFacebookLinked, isLinking, onLinkFacebook }) => {
   return (
-    <nav className="w-64 bg-gray-800 p-4 flex flex-col h-screen sticky top-0 border-r border-gray-700">
+    <nav className="w-64 bg-slate-800 p-4 flex flex-col h-screen sticky top-0 border-r border-slate-700">
       <div className="flex items-center gap-3 mb-10 px-2">
         <div className="bg-blue-500 p-2 rounded-lg">
           <Icon name="logo" size={8} />
@@ -28,7 +28,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setView, is
       </div>
       
       <div className="flex-grow">
-        <p className="px-4 text-sm font-semibold text-gray-400 mb-2">MENÚ</p>
+        <p className="px-4 text-sm font-semibold text-slate-400 mb-2">MENÚ</p>
         <ul className="space-y-2">
           {navItems.map(item => (
             <li key={item.view}>
@@ -37,7 +37,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setView, is
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-base font-semibold transition-colors duration-200 ${
                   currentView === item.view
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                    : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                 }`}
               >
                 <Icon name={item.icon} />
@@ -49,9 +49,9 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setView, is
       </div>
 
       <div className="space-y-4">
-        <p className="px-4 text-sm font-semibold text-gray-400 mb-2">CUENTA</p>
+        <p className="px-4 text-sm font-semibold text-slate-400 mb-2">CUENTA</p>
         {isFacebookLinked ? (
-            <div className="flex items-center gap-3 px-4 py-3 bg-gray-900/50 rounded-lg">
+            <div className="flex items-center gap-3 px-4 py-3 bg-slate-900/50 rounded-lg">
                 <img className="h-10 w-10 rounded-full" src="https://picsum.photos/100/100" alt="Avatar"/>
                 <div>
                     <p className="font-semibold text-white text-sm">Mi Página de Facebook</p>
@@ -65,7 +65,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setView, is
             <button
                 onClick={onLinkFacebook}
                 disabled={isLinking}
-                className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg text-base font-semibold transition-colors duration-200 bg-blue-800/50 hover:bg-blue-700/50 text-white disabled:bg-gray-600"
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg text-base font-semibold transition-colors duration-200 bg-blue-800/50 hover:bg-blue-700/50 text-white disabled:bg-slate-600"
             >
                 {isLinking ? <Spinner/> : <Icon name="facebook" size={5}/>}
                 {isLinking ? 'Vinculando...' : 'Vincular Cuenta'}
@@ -73,9 +73,9 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setView, is
         )}
       </div>
 
-      <div className="mt-6 p-4 bg-gray-900/50 rounded-lg text-center">
-        <p className="text-xs text-gray-400">© 2024 Publicador IA</p>
-        <p className="text-xs text-gray-500 mt-1">Simulación para fines demostrativos.</p>
+      <div className="mt-6 p-4 bg-slate-900/50 rounded-lg text-center">
+        <p className="text-xs text-slate-400">© 2024 Publicador IA</p>
+        <p className="text-xs text-slate-500 mt-1">Simulación para fines demostrativos.</p>
       </div>
     </nav>
   );
