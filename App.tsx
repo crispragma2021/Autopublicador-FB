@@ -7,26 +7,22 @@ import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { LoginPage } from './components/LoginPage';
 import { SubscriptionModal } from './components/SubscriptionModal';
-import { WelcomeTutorialModal } from './components/WelcomeTutorialModal'; // Import nuevo modal
+import { WelcomeTutorialModal } from './components/WelcomeTutorialModal';
 import type { Post, ScheduledPost, ScheduleOptions, AppView, DayOfWeek, FacebookTarget } from './types';
 import { PostStatus, ScheduleType } from './types';
 import { postToFacebook, getConnectedTargets } from './services/facebookService';
 import { requestNotificationPermission, sendNotification } from './services/notificationService';
 
 // ==================================================================================
-// ⚠️ CONFIGURACIÓN REAL DE FACEBOOK
-// 1. Ve a developers.facebook.com -> Mis Apps -> Copia el "Identificador de la App"
-// 2. Pégalo abajo dentro de las comillas.
-// 3. Si lo dejas vacío, la app usará el MODO SIMULACIÓN.
-const FACEBOOK_APP_ID = ''; 
+// ⚠️ CONFIGURACIÓN REAL DE FACEBOOK - ¡PON TU APP ID AQUÍ!
+const FACEBOOK_APP_ID = ''; // Ej: '123456789012345'
 // ==================================================================================
 
 // ==================================================================================
-// CONFIGURACIÓN DE SEGURIDAD ANTI-BANEO (HUMAN EMULATION)
-// ==================================================================================
-const MAX_DAILY_POSTS = 20; // Límite seguro sugerido por expertos en FB Ads
-const MIN_MINUTES_BETWEEN_POSTS = 30; // Facebook marca como spam si hay posts muy seguidos
-const FORCED_JITTER_MINUTES = 5; // Variación aleatoria forzada +/- minutos
+// CONFIGURACIÓN DE SEGURIDAD ANTI-BANEO
+const MAX_DAILY_POSTS = 20; 
+const MIN_MINUTES_BETWEEN_POSTS = 30; 
+const FORCED_JITTER_MINUTES = 5; 
 // ==================================================================================
 
 declare global {
@@ -38,11 +34,21 @@ declare global {
 
 const calculateNextPublishTime = (schedule: ScheduleOptions, fromDate: Date = new Date()): Date => {
   let targetDate = new Date();
+  let searchBaseDate = new Date(fromDate.getTime());
 
-  // 1. CALCULO BASE
+  if (schedule.startDate) {
+      const [year, month, day] = schedule.startDate.split('-').map(Number);
+      const startDateObj = new Date(year, month - 1, day, 0, 0, 0);
+      
+      if (startDateObj > searchBaseDate) {
+          searchBaseDate = startDateObj;
+      }
+  }
+
   if (schedule.type === ScheduleType.INTERVAL) {
-    const startDate = new Date(fromDate.getTime() + 1000); 
-    // Aplicamos un randomize base si el usuario lo eligió
+    const baseTime = searchBaseDate > fromDate ? searchBaseDate.getTime() : fromDate.getTime() + 1000;
+    const startDate = new Date(baseTime); 
+    
     const delay = schedule.randomize
       ? schedule.frequencyMinutes * 0.8 + Math.random() * (schedule.frequencyMinutes * 0.4)
       : schedule.frequencyMinutes;
@@ -51,7 +57,7 @@ const calculateNextPublishTime = (schedule: ScheduleOptions, fromDate: Date = ne
 
   else if (schedule.type === ScheduleType.SPECIFIC_DAYS) {
     let earliestNextDate: Date | null = null;
-    const searchFromDate = new Date(fromDate.getTime() + 1000);
+    const searchFrom = new Date(searchBaseDate.getTime() + 1000);
 
     for (const pattern of schedule.patterns) {
         const sortedTimes = pattern.times.sort();
@@ -59,8 +65,8 @@ const calculateNextPublishTime = (schedule: ScheduleOptions, fromDate: Date = ne
         if (sortedDays.length === 0 || sortedTimes.length === 0) continue;
 
         for (let i = 0; i < 14; i++) {
-            const checkDate = new Date(searchFromDate);
-            checkDate.setDate(searchFromDate.getDate() + i);
+            const checkDate = new Date(searchFrom);
+            checkDate.setDate(searchFrom.getDate() + i);
             const checkDay = checkDate.getDay() as DayOfWeek;
 
             if (sortedDays.includes(checkDay)) {
@@ -69,7 +75,7 @@ const calculateNextPublishTime = (schedule: ScheduleOptions, fromDate: Date = ne
                     const potentialDate = new Date(checkDate);
                     potentialDate.setHours(hours, minutes, 0, 0);
 
-                    if (potentialDate > searchFromDate) {
+                    if (potentialDate > searchFrom) {
                        if (!earliestNextDate || potentialDate < earliestNextDate) {
                            earliestNextDate = potentialDate;
                        }
@@ -86,19 +92,15 @@ const calculateNextPublishTime = (schedule: ScheduleOptions, fromDate: Date = ne
     if (earliestNextDate) {
         targetDate = earliestNextDate;
     } else {
-        const fallbackDate = new Date();
+        const fallbackDate = new Date(searchFrom);
         fallbackDate.setDate(fallbackDate.getDate() + 7);
         targetDate = fallbackDate;
     }
   }
   
-  // 2. CAPA DE SEGURIDAD: JITTER FORZADO (Humanización)
-  // Incluso si el cálculo matemático dice "09:00:00", añadimos ruido aleatorio
-  // para que Facebook no detecte un patrón robótico perfecto.
-  const jitterMs = (Math.random() * FORCED_JITTER_MINUTES * 2 - FORCED_JITTER_MINUTES) * 60 * 1000; // +/- 5 min
+  const jitterMs = (Math.random() * FORCED_JITTER_MINUTES * 2 - FORCED_JITTER_MINUTES) * 60 * 1000; 
   const humanizedDate = new Date(targetDate.getTime() + jitterMs);
 
-  // Nunca permitir que el jitter mueva la fecha al pasado
   return humanizedDate > new Date() ? humanizedDate : targetDate;
 };
 
@@ -106,6 +108,9 @@ const App: React.FC = () => {
   const [view, setView] = useState<AppView>('DASHBOARD');
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
   const [history, setHistory] = useState<ScheduledPost[]>([]);
+  
+  // EDICIÓN
+  const [postToEdit, setPostToEdit] = useState<ScheduledPost | null>(null);
   
   // FACEBOOK STATE
   const [isFacebookLinked, setIsFacebookLinked] = useState(false);
@@ -115,26 +120,18 @@ const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
   
-  // WELCOME TUTORIAL STATE
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
-  // Solicitar permisos de notificación al cargar
   useEffect(() => {
       requestNotificationPermission();
   }, []);
 
-  // DETECTAR PAGO EXITOSO (Callback de Stripe)
   useEffect(() => {
       const params = new URLSearchParams(window.location.search);
       if (params.get('payment') === 'success') {
-          // Activar Plan Pro
           localStorage.setItem('is_pro_user', 'true');
           sendNotification("¡Plan Pro Activado!", "Has desbloqueado generación de video ilimitada.", "success");
-          
-          // Limpiar URL para evitar re-activaciones al refrescar
           window.history.replaceState({}, document.title, window.location.pathname);
-          
-          // Abrir Dashboard o mostrar confeti (opcional)
           setView('CREATE');
       } else if (params.get('payment') === 'cancel') {
           sendNotification("Pago Cancelado", "El proceso de suscripción no se completó.", "error");
@@ -142,12 +139,9 @@ const App: React.FC = () => {
       }
   }, []);
 
-  // Fetch Targets when linked and CHECK WELCOME
   useEffect(() => {
       if (isFacebookLinked) {
           getConnectedTargets().then(setAvailableTargets);
-          
-          // Check if user has seen the welcome modal
           const hasSeenWelcome = localStorage.getItem('hasSeenWelcomeModal');
           if (!hasSeenWelcome) {
               setShowWelcomeModal(true);
@@ -157,7 +151,6 @@ const App: React.FC = () => {
       }
   }, [isFacebookLinked]);
 
-  // Inicializar SDK de Facebook Real si existe APP ID y verificar LocalStorage
   useEffect(() => {
     const fbToken = localStorage.getItem('fb_access_token');
     if (fbToken) {
@@ -165,8 +158,6 @@ const App: React.FC = () => {
     }
     
     if (FACEBOOK_APP_ID) {
-        console.log("Inicializando Facebook SDK con ID:", FACEBOOK_APP_ID);
-        // Cargar script del SDK asíncronamente
         (function(d, s, id){
              var js, fjs = d.getElementsByTagName(s)[0];
              if (d.getElementById(id)) {return;}
@@ -186,76 +177,62 @@ const App: React.FC = () => {
               version    : 'v19.0'
             });
             
-            // Verificar estado de login al cargar
             window.FB.getLoginStatus(function(response: any) {
                 if (response.status === 'connected') {
                     setIsFacebookLinked(true);
                     localStorage.setItem('fb_access_token', response.authResponse.accessToken);
-                    localStorage.setItem('fb_user_id', response.authResponse.userID); // Guardar ID real
+                    localStorage.setItem('fb_user_id', response.authResponse.userID); 
                 }
             });
         };
     }
   }, []);
 
-  // --- WELCOME HANDLERS ---
   const handleStartTutorial = () => {
-      // 1. Marcar que ya vio el modal de bienvenida
       localStorage.setItem('hasSeenWelcomeModal', 'true');
-      // 2. Asegurarse de que NO tenga marcado el tutorial de CreatePost como visto (para que se active)
       localStorage.removeItem('hasSeenCreateTutorial');
-      // 3. Ir a la vista de crear
       setView('CREATE');
       setShowWelcomeModal(false);
   };
 
   const handleSkipTutorial = () => {
-      // 1. Marcar bienvenida como vista
       localStorage.setItem('hasSeenWelcomeModal', 'true');
-      // 2. Marcar tutorial de post como visto (para que no salga)
       localStorage.setItem('hasSeenCreateTutorial', 'true');
       setShowWelcomeModal(false);
   };
 
-  // --- FACEBOOK HANDLERS ---
   const handleLinkFacebook = () => {
     setIsLinking(true);
 
-    // 1. LOGIN REAL (Si hay APP ID configurado)
     if (FACEBOOK_APP_ID && window.FB) {
-        console.log("Intentando login real con Facebook SDK...");
         window.FB.login(function(response: any) {
             if (response.authResponse) {
-                 console.log('Login exitoso con Facebook Real');
                  localStorage.setItem('fb_access_token', response.authResponse.accessToken);
                  localStorage.setItem('fb_user_id', response.authResponse.userID);
                  setIsFacebookLinked(true);
             } else {
-                 console.log('Usuario canceló el login o no autorizó completamente.');
                  alert('La conexión con Facebook fue cancelada.');
             }
             setIsLinking(false);
-        }, {scope: 'public_profile,email'}); // Añadir 'pages_manage_posts' requiere revisión de app en FB
+        }, {scope: 'public_profile,email,pages_manage_posts,pages_read_engagement,pages_show_list'}); // PERMISOS REALES
         return; 
     }
 
-    // 2. FALLBACK: SIMULACIÓN DIRECTA (Si no hay APP ID)
-    console.log("Iniciando MODO SIMULACIÓN (Sin App ID configurado)");
     setTimeout(() => {
         const mockToken = 'mock_access_token_' + Date.now();
-        const mockUserId = 'fb_user_' + Math.floor(Math.random() * 100000); // ID Único Simulado
+        const mockUserId = 'fb_user_' + Math.floor(Math.random() * 100000); 
         
         localStorage.setItem('fb_access_token', mockToken);
-        localStorage.setItem('fb_user_id', mockUserId); // Guardamos ID único simulado
+        localStorage.setItem('fb_user_id', mockUserId); 
         
         setIsFacebookLinked(true);
         setIsLinking(false);
-    }, 1500); // 1.5 segundos de carga simulada
+    }, 1500); 
   };
 
   const handleUnlinkFacebook = () => {
     localStorage.removeItem('fb_access_token');
-    localStorage.removeItem('fb_user_id'); // Limpiamos el ID
+    localStorage.removeItem('fb_user_id'); 
     setIsFacebookLinked(false);
     if (FACEBOOK_APP_ID && window.FB) {
         try {
@@ -266,7 +243,6 @@ const App: React.FC = () => {
     }
   };
 
-  // --- VALIDACIÓN DE SEGURIDAD (ANTI-BAN) ---
   const validateSafeScheduling = (publishDate: Date): boolean => {
     const today = new Date();
     const postsToday = scheduledPosts.filter(p => 
@@ -295,7 +271,11 @@ const App: React.FC = () => {
     return true;
   };
 
-  // --- POST HANDLING ---
+  const handleEditPost = (post: ScheduledPost) => {
+    setScheduledPosts(prev => prev.filter(p => p.id !== post.id));
+    setPostToEdit(post);
+    setView('CREATE');
+  };
 
   const handleSchedulePost = useCallback((post: Post, schedule: ScheduleOptions, targets: FacebookTarget[]) => {
     if (!isFacebookLinked) return; 
@@ -312,11 +292,9 @@ const App: React.FC = () => {
       targets
     };
     setScheduledPosts(prev => [...prev, newScheduledPost].sort((a, b) => new Date(a.publishAt).getTime() - new Date(b.publishAt).getTime()));
+    setPostToEdit(null); // Limpiar edición si existía
     setView('CONTENT');
-    
-    // Solicitar permiso si aún no lo tiene al programar
     requestNotificationPermission();
-
   }, [isFacebookLinked, scheduledPosts, history]);
 
   const handlePostNow = useCallback(async (post: Post, targets: FacebookTarget[]) => {
@@ -333,7 +311,7 @@ const App: React.FC = () => {
     };
 
     setHistory(prev => [newPost, ...prev]);
-    setView('CONTENT');
+    setPostToEdit(null); 
 
     try {
       await postToFacebook(post, targets.map(t => t.id));
@@ -346,7 +324,6 @@ const App: React.FC = () => {
     }
   }, [isFacebookLinked, history, scheduledPosts]); 
 
-  // EFFECT LOOP: CHECK SCHEDULED POSTS
   useEffect(() => {
     if (!isFacebookLinked) return;
     const interval = setInterval(() => {
@@ -360,20 +337,13 @@ const App: React.FC = () => {
           try {
             await postToFacebook(p.post, p.targets.map(t => t.id));
             
-            // Success
             setHistory(prev => prev.map(hp => hp.id === historyPost.id ? { ...hp, status: PostStatus.PUBLISHED } : hp));
             sendNotification("Publicación Automática Exitosa", `Tu post programado se ha publicado correctamente.`, "success");
 
-            // Reschedule if recurring (Interval) or find next slot (Days)
-            // Note: For specific days, calculateNextPublishTime finds the next valid slot in future
             const nextPublishAt = calculateNextPublishTime(p.schedule, new Date());
-            
-            // If next time is valid and user wants repetition (Assuming interval or recurring logic desired)
-            // For this app logic, we reschedule the item back into scheduledPosts
             setScheduledPosts(prev => prev.map(sp => sp.id === p.id ? { ...sp, status: PostStatus.SCHEDULED, publishAt: nextPublishAt } : sp).sort((a, b) => new Date(a.publishAt).getTime() - new Date(b.publishAt).getTime()));
 
           } catch (error) {
-            // Failure
             setHistory(prev => prev.map(hp => hp.id === historyPost.id ? { ...hp, status: PostStatus.FAILED } : hp));
             setScheduledPosts(prev => prev.map(sp => sp.id === p.id ? {...sp, status: PostStatus.FAILED} : sp));
             sendNotification("Fallo en Publicación Automática", `Un post programado no se pudo publicar.`, "error");
@@ -387,18 +357,45 @@ const App: React.FC = () => {
   const handleViewChange = (newView: AppView) => {
       setView(newView);
       setIsMobileMenuOpen(false);
+      if (newView !== 'CREATE') {
+          setPostToEdit(null);
+      }
   };
 
   const renderView = () => {
     switch(view) {
       case 'DASHBOARD':
-        return <Dashboard scheduledPosts={scheduledPosts} history={history} createPost={() => handleViewChange('CREATE')} isFacebookLinked={isFacebookLinked} />;
+        return <Dashboard 
+                  scheduledPosts={scheduledPosts} 
+                  history={history} 
+                  createPost={() => handleViewChange('CREATE')} 
+                  isFacebookLinked={isFacebookLinked} 
+                  onEditPost={handleEditPost}
+               />;
       case 'CREATE':
-        return <CreatePost onPostNow={handlePostNow} onSchedulePost={handleSchedulePost} isFacebookLinked={isFacebookLinked} availableTargets={availableTargets} />;
+        return <CreatePost 
+                  onPostNow={handlePostNow} 
+                  onSchedulePost={handleSchedulePost} 
+                  isFacebookLinked={isFacebookLinked} 
+                  availableTargets={availableTargets}
+                  initialPost={postToEdit} 
+               />;
       case 'CONTENT':
-        return <Content scheduledPosts={scheduledPosts} history={history} isFacebookLinked={isFacebookLinked} />;
+        return <Content 
+                  scheduledPosts={scheduledPosts} 
+                  history={history} 
+                  isFacebookLinked={isFacebookLinked} 
+                  onEditPost={handleEditPost}
+                  onBack={() => handleViewChange('DASHBOARD')}
+               />;
       default:
-        return <Dashboard scheduledPosts={scheduledPosts} history={history} createPost={() => handleViewChange('CREATE')} isFacebookLinked={isFacebookLinked} />;
+        return <Dashboard 
+                  scheduledPosts={scheduledPosts} 
+                  history={history} 
+                  createPost={() => handleViewChange('CREATE')} 
+                  isFacebookLinked={isFacebookLinked} 
+                  onEditPost={handleEditPost}
+               />;
     }
   }
 

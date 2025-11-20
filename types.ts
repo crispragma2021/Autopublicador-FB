@@ -17,10 +17,21 @@ export interface Placements {
     instagram: boolean;
 }
 
+export type ToneType = 'Profesional' | 'Divertido' | 'Urgente' | 'Empático' | 'Lujo' | 'Inspirador';
+
+export interface Targeting {
+    ageMin: number;
+    ageMax: number;
+    locations: string;
+    interests: string;
+}
+
 export interface Post {
   text: string;
   media: MediaItem[]; 
-  placements?: Placements; // Nuevo campo para FB/IG
+  placements?: Placements;
+  targeting?: Targeting; 
+  tone?: ToneType; 
 }
 
 export enum PostStatus {
@@ -41,6 +52,7 @@ interface IntervalSchedule {
   type: ScheduleType.INTERVAL;
   frequencyMinutes: number;
   randomize: boolean;
+  startDate?: string; // YYYY-MM-DD
 }
 
 export interface SchedulePattern {
@@ -52,6 +64,7 @@ export interface SchedulePattern {
 interface SpecificDaysSchedule {
   type: ScheduleType.SPECIFIC_DAYS;
   patterns: SchedulePattern[];
+  startDate?: string; // YYYY-MM-DD
 }
 
 export type ScheduleOptions = IntervalSchedule | SpecificDaysSchedule;
@@ -61,6 +74,7 @@ export interface FacebookTarget {
     name: string;
     type: 'PAGE' | 'GROUP';
     avatar?: string; 
+    accessToken?: string; // TOKEN REAL PARA PUBLICAR
 }
 
 export interface ScheduledPost {
@@ -83,13 +97,13 @@ export type AppView = 'DASHBOARD' | 'CREATE' | 'CONTENT';
 
 export interface UserUsage {
     textCount: number;
-    imageCount: number; // Nuevo contador para imágenes
+    imageCount: number;
     videoCount: number;
     lastResetDate: string;
 }
 
 export const FREE_PLAN_LIMITS = {
     TEXT_DAILY: 1000, 
-    IMAGE_DAILY: 50, // Límite tangible para mostrar contador
+    IMAGE_DAILY: 50, 
     VIDEO_DAILY: 1,
 };

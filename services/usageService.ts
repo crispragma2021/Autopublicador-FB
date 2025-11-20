@@ -88,3 +88,19 @@ export const getRemainingCredits = () => {
         isPro: false
     };
 };
+
+// Helper para UI: Devuelve porcentaje consumido (0 a 100)
+export const getUsagePercentage = (type: 'text' | 'image' | 'video'): number => {
+    const usage = getUserUsage();
+    const isPro = localStorage.getItem('is_pro_user') === 'true';
+    if (isPro) return 0; // Pro no muestra barra de consumo o siempre llena
+
+    let used = 0;
+    let limit = 1;
+
+    if (type === 'text') { used = usage.textCount; limit = FREE_PLAN_LIMITS.TEXT_DAILY; }
+    if (type === 'image') { used = usage.imageCount; limit = FREE_PLAN_LIMITS.IMAGE_DAILY; }
+    if (type === 'video') { used = usage.videoCount; limit = FREE_PLAN_LIMITS.VIDEO_DAILY; }
+
+    return Math.min(100, (used / limit) * 100);
+};

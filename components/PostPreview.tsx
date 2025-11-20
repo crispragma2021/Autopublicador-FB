@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { Post } from '../types';
 import { PostType } from '../types';
 import { Icon } from './Icon';
@@ -18,6 +18,7 @@ export const PostPreview: React.FC<PostPreviewProps> = ({
     onClearMedia 
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showShareMenu, setShowShareMenu] = useState(false);
 
   // Auto-resize del textarea
   useEffect(() => {
@@ -40,6 +41,11 @@ export const PostPreview: React.FC<PostPreviewProps> = ({
   const FB_CARD_BG = 'bg-[#242526]';
   const FB_TEXT_SEC = 'text-[#B0B3B8]';
   const FB_BORDER = 'border-[#3E4042]';
+
+  const handleShareAction = (action: string) => {
+      alert(`Acción simulada: ${action}`);
+      setShowShareMenu(false);
+  };
 
   return (
     <div className={`${FB_CARD_BG} rounded-lg w-full shadow-sm border ${FB_BORDER} font-sans overflow-hidden`}>
@@ -138,16 +144,39 @@ export const PostPreview: React.FC<PostPreviewProps> = ({
                 </div>
            </div>
       </div>
-      <div className="px-2 border-t border-[#3E4042] flex items-center text-[#B0B3B8] font-medium h-10">
+      <div className="px-2 border-t border-[#3E4042] flex items-center text-[#B0B3B8] font-medium h-10 relative">
           <button className="flex-1 flex items-center justify-center gap-2 hover:bg-[#3A3B3C] rounded h-8 transition-colors">
              <span className="text-[15px]">Me gusta</span>
           </button>
           <button className="flex-1 flex items-center justify-center gap-2 hover:bg-[#3A3B3C] rounded h-8 transition-colors">
              <span className="text-[15px]">Comentar</span>
           </button>
-          <button className="flex-1 flex items-center justify-center gap-2 hover:bg-[#3A3B3C] rounded h-8 transition-colors">
-             <span className="text-[15px]">Compartir</span>
-          </button>
+          <div className="relative flex-1">
+            <button 
+                onClick={() => setShowShareMenu(!showShareMenu)}
+                className="w-full flex items-center justify-center gap-2 hover:bg-[#3A3B3C] rounded h-8 transition-colors"
+            >
+                <span className="text-[15px]">Compartir</span>
+            </button>
+            
+            {showShareMenu && (
+                <div className="absolute bottom-full right-0 mb-2 w-56 bg-[#242526] border border-[#3E4042] rounded-lg shadow-xl z-30 overflow-hidden">
+                    <button onClick={() => handleShareAction('Compartir ahora (Público)')} className="w-full text-left px-4 py-3 text-[#E4E6EB] text-sm hover:bg-[#3A3B3C] flex items-center gap-3">
+                        <Icon name="rocket" size={4} className="text-white"/> Compartir ahora (Público)
+                    </button>
+                    <button onClick={() => handleShareAction('Enviar por Messenger')} className="w-full text-left px-4 py-3 text-[#E4E6EB] text-sm hover:bg-[#3A3B3C] flex items-center gap-3">
+                        <div className="bg-blue-500 rounded-full p-1"><Icon name="text" size={2} className="text-white"/></div> Enviar por Messenger
+                    </button>
+                    <button onClick={() => handleShareAction('Compartir en un grupo')} className="w-full text-left px-4 py-3 text-[#E4E6EB] text-sm hover:bg-[#3A3B3C] flex items-center gap-3">
+                        <Icon name="users" size={4} className="text-white"/> Compartir en un grupo
+                    </button>
+                    <div className="border-t border-[#3E4042] my-1"></div>
+                    <button onClick={() => handleShareAction('Copiar enlace')} className="w-full text-left px-4 py-3 text-[#E4E6EB] text-sm hover:bg-[#3A3B3C] flex items-center gap-3">
+                         Copiar enlace
+                    </button>
+                </div>
+            )}
+          </div>
       </div>
     </div>
   );

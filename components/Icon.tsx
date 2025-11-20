@@ -25,6 +25,11 @@ const icons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
     </svg>
   ),
+  arrowLeft: (props) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+    </svg>
+  ),
   search: (props) => (
     <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -178,7 +183,7 @@ const icons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
     <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l8 0-8 0m-8 0l-4 0 4 0" />
         <line x1="19" y1="4" x2="10" y2="20" strokeWidth="2" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 4h3M6 20h3" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 4h3M6 20h3" />
     </svg>
   ),
   list: (props) => (
@@ -192,6 +197,18 @@ const icons: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
         <path d="M12 14l9-5-9-5-9 5 9 5z" />
         <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+    </svg>
+  ),
+  target: (props) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 012-2h10a2 2 0 012 2v8m2-8a2 2 0 012-2h2a2 2 0 012 2v8m-6 0h6" />
+       <circle cx="12" cy="10" r="3" />
+       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2a8 8 0 018 8c0 4.418-8 11-8 11S4 14.418 4 10a8 8 0 018-8z" />
+    </svg>
+  ),
+  magic: (props) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
     </svg>
   )
 };

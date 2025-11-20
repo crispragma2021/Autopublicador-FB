@@ -26,6 +26,9 @@ export const Scheduler: React.FC<SchedulerProps> = ({ onPostNow, onSchedulePost,
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduleType, setScheduleType] = useState<ScheduleType>(ScheduleType.SPECIFIC_DAYS);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  
+  // Start Date State
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Interval state
   const [frequency, setFrequency] = useState(60);
@@ -126,7 +129,8 @@ export const Scheduler: React.FC<SchedulerProps> = ({ onPostNow, onSchedulePost,
         options = {
             type: ScheduleType.INTERVAL,
             frequencyMinutes: frequency,
-            randomize
+            randomize,
+            startDate
         };
     } else {
         const validPatterns = patterns.filter(p => p.days.length > 0 && p.times.length > 0);
@@ -136,7 +140,8 @@ export const Scheduler: React.FC<SchedulerProps> = ({ onPostNow, onSchedulePost,
         }
         options = {
             type: ScheduleType.SPECIFIC_DAYS,
-            patterns: validPatterns
+            patterns: validPatterns,
+            startDate
         };
     }
     
@@ -187,6 +192,24 @@ export const Scheduler: React.FC<SchedulerProps> = ({ onPostNow, onSchedulePost,
           <div className="flex items-center justify-center gap-2 bg-blue-900/20 border border-blue-500/20 p-2 rounded text-xs text-blue-300">
              <Icon name="lock" size={3} />
              <span className="font-semibold">Modo Humano: Activado por defecto para tu seguridad</span>
+          </div>
+          
+          {/* START DATE INPUT */}
+          <div className="flex items-center gap-3 bg-slate-900 p-3 rounded-lg border border-slate-700">
+             <div className="bg-slate-800 p-2 rounded text-blue-400">
+                 <Icon name="calendar" size={4} />
+             </div>
+             <div className="flex-1">
+                 <label htmlFor="startDate" className="text-xs font-bold text-slate-400 block uppercase mb-1">Fecha de inicio de campaña</label>
+                 <input 
+                    type="date" 
+                    id="startDate"
+                    value={startDate}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-600 rounded p-1.5 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                 />
+             </div>
           </div>
 
           <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-700">

@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { Post, ScheduleOptions, FacebookTarget, MediaItem, Placements } from '../types';
-import { PostType, GenerationStatus, ScheduleType } from '../types';
+import type { Post, ScheduleOptions, FacebookTarget, MediaItem, Placements, ToneType, Targeting, ScheduledPost } from '../types';
+import { PostType, GenerationStatus, ScheduleType, FREE_PLAN_LIMITS } from '../types';
 import { generateText, generateImage, generateVideo, checkVideoStatus } from '../services/geminiService';
-import { checkLimitReached, incrementUsage, getRemainingCredits } from '../services/usageService';
+import { checkLimitReached, incrementUsage, getRemainingCredits, getUsagePercentage } from '../services/usageService';
 import { PostPreview } from './PostPreview';
 import { Scheduler } from './Scheduler';
 import { Icon } from './Icon';
@@ -16,6 +16,7 @@ interface CreatePostProps {
   onSchedulePost: (post: Post, schedule: ScheduleOptions, targets: FacebookTarget[]) => void;
   isFacebookLinked: boolean;
   availableTargets: FacebookTarget[];
+  initialPost?: ScheduledPost | null; // Prop para editar
 }
 
 interface GeneratedItem {
@@ -56,6 +57,9 @@ const HASHTAG_SETS = {
     'Viajes': '#viajes #turismo #aventura #travel #vacaciones'
 };
 
+const TONES: ToneType[] = ['Profesional', 'Divertido', 'Urgente', 'Empático', 'Lujo', 'Inspirador'];
+const MAX_TARGETS = 5; // Límite de destinos
+
 const formatTime = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
     const seconds = (totalSeconds % 60).toString().padStart(2, '0');
@@ -72,29 +76,22 @@ const TUTORIAL_STEPS = [
     {
         id: 'step-media',
         title: '2. Multimedia',
-        content: 'Sube tus propias fotos/videos o pega enlaces aquí.',
+        content: 'Sube tus propias fotos/videos o pega enlaces aquí. Puedes arrastrar las imágenes para reordenarlas.',
         targetId: 'tutorial-media-section'
     },
     {
         id: 'step-targets',
         title: '3. Destinos',
-        content: 'Selecciona las páginas y grupos donde se publicará.',
+        content: `Selecciona las páginas y grupos donde se publicará. (Máximo ${MAX_TARGETS} destinos simultáneos para evitar spam).`,
         targetId: 'tutorial-targets-section'
     },
     {
         id: 'step-schedule',
         title: '4. Configurar y Publicar',
-        content: 'Haz clic en el botón superior derecho para elegir si publicar ahora o programar.',
-        targetId: 'btn-config-main'
+        content: 'Haz clic en los botones "Publicar" o "Programar" en la parte superior derecha para finalizar.',
+        targetId: 'header-actions'
     }
 ];
-
-const mapChars = (text: string, mapFrom: string, mapTo: string) => {
-    return text.split('').map(char => {
-        const index = mapFrom.indexOf(char);
-        return index > -1 ? mapTo.substring(index * 2, index * 2 + 2) : char; 
-    }).join('');
-};
 
 const toBoldUnicode = (str: string) => {
     const map: {[key: string]: string} = {
@@ -108,17 +105,24 @@ const toBoldUnicode = (str: string) => {
 const toItalicUnicode = (str: string) => {
     const map: {[key: string]: string} = {
         'A':'𝘈','B':'𝘉','C':'𝘊','D':'𝘋','E':'𝘌','F':'𝘍','G':'𝘎','H':'𝘏','I':'𝘐','J':'𝘑','K':'𝘒','L':'𝘓','M':'𝘔','N':'𝘕','O':'𝘖','P':'𝘗','Q':'𝘘','R':'𝘙','S':'𝘚','T':'𝘛','U':'𝘜','V':'𝘝','W':'𝘞','X':'𝘟','Y':'𝘠','Z':'𝘡',
-        'a':'𝘢','b':'𝘣','c':'𝘤','d':'𝘥','e':'𝘦','f':'𝘧','g':'𝘨','h':'𝘩','i':'𝘪','j':'𝘫','k':'𝘬','l':'𝘭','m':'𝘮','n':'𝘯','o':'𝘰','p':'𝘱','q':'𝘲','r':'𝘳','s':'𝘴','t':'𝘵','u':'𝘶','v':'𝘷','w':'𝘸','x':'𝘹','y':'𝘺','z':'𝘻'
+        'a':'𝘢','b':'𝘣','c':'𝘤','d':'𝘥','e':'𝗲','f':'𝘧','g':'𝗴','h':'𝘩','i':'𝘪','j':'𝘫','k':'𝘬','l':'𝘭','m':'𝘮','n':'𝘯','o':'𝘰','p':'𝘱','q':'𝗲','r':'𝘳','s':'𝘴','t':'𝘵','u':'𝘂','v':'𝘷','w':'𝘸','x':'𝘹','y':'𝘺','z':'𝘻'
     };
     return str.split('').map(c => map[c] || c).join('');
 };
 
-export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePost, isFacebookLinked, availableTargets }) => {
+export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePost, isFacebookLinked, availableTargets, initialPost }) => {
   const [text, setText] = useState('');
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+
   const [placements, setPlacements] = useState<Placements>({ facebook: true, instagram: false });
+  
+  // Targeting & Tone State
+  const [targeting, setTargeting] = useState<Targeting>({ ageMin: 18, ageMax: 65, locations: '', interests: '' });
+  const [selectedTone, setSelectedTone] = useState<ToneType>('Profesional');
+  const [isTargetingExpanded, setIsTargetingExpanded] = useState(false);
 
   const [selectedTargetIds, setSelectedTargetIds] = useState<string[]>([]);
   const [targetSearchQuery, setTargetSearchQuery] = useState('');
@@ -131,6 +135,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
 
   const [videoLoadingMessage, setVideoLoadingMessage] = useState(videoLoadingMessages[0]);
   const [videoGenElapsedTime, setVideoGenElapsedTime] = useState(0);
+  const [videoProgress, setVideoProgress] = useState(0);
   
   const [manualUrl, setManualUrl] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -151,16 +156,35 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
   const [isSchedulerModalOpen, setIsSchedulerModalOpen] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const videoPollInterval = useRef<number | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
 
+  // LOAD INITIAL POST FOR EDITING
+  useEffect(() => {
+    if (initialPost) {
+        setText(initialPost.post.text);
+        setMediaList(initialPost.post.media);
+        if (initialPost.post.placements) setPlacements(initialPost.post.placements);
+        if (initialPost.post.targeting) setTargeting(initialPost.post.targeting);
+        if (initialPost.post.tone) setSelectedTone(initialPost.post.tone);
+        
+        // Cargar destinos seleccionados
+        const targetIds = initialPost.targets.map(t => t.id);
+        setSelectedTargetIds(targetIds);
+        
+        // Scroll arriba para editar
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [initialPost]);
+
   useEffect(() => {
       const hasSeenTutorial = localStorage.getItem('hasSeenCreateTutorial');
-      if (!hasSeenTutorial && isFacebookLinked) {
+      if (!hasSeenTutorial && isFacebookLinked && !initialPost) {
           setTimeout(() => setIsTutorialActive(true), 500);
       }
-  }, [isFacebookLinked]);
+  }, [isFacebookLinked, initialPost]);
 
   useEffect(() => {
       if (isTutorialActive) {
@@ -196,11 +220,11 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
   };
 
   useEffect(() => {
-      if (availableTargets.length > 0 && selectedTargetIds.length === 0) {
+      if (availableTargets.length > 0 && selectedTargetIds.length === 0 && !initialPost) {
           const page = availableTargets.find(t => t.type === 'PAGE');
           if (page) setSelectedTargetIds([page.id]);
       }
-  }, [availableTargets]);
+  }, [availableTargets, initialPost]);
 
   useEffect(() => {
       setCredits(getRemainingCredits());
@@ -232,6 +256,12 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
           if (prev.includes(id)) {
               return prev.filter(tid => tid !== id);
           } else {
+              if (prev.length >= MAX_TARGETS) {
+                  setGenerationError(`⚠️ Solo puedes seleccionar hasta ${MAX_TARGETS} destinos a la vez para evitar spam.`);
+                  // Auto-clear error after 3s
+                  setTimeout(() => setGenerationError(null), 3000);
+                  return prev;
+              }
               return [...prev, id];
           }
       });
@@ -334,7 +364,8 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
         setTextGenStatus(GenerationStatus.LOADING);
         setGenerationError(null);
         try {
-          const generated = await generateText(text);
+          // Pasamos el tono seleccionado al servicio
+          const generated = await generateText(text, selectedTone);
           setText(generated); 
           setTextGenStatus(GenerationStatus.SUCCESS);
           addToHistory('text', generated, text); 
@@ -390,9 +421,16 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
         setManualUrl('');
         
         setVideoGenElapsedTime(0);
+        setVideoProgress(0);
+        
         if (timerIntervalRef.current) window.clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = window.setInterval(() => {
             setVideoGenElapsedTime(prev => prev + 1);
+            // Simular progreso hasta 90% en 20 segundos
+            setVideoProgress(prev => {
+                if (prev >= 90) return prev;
+                return prev + (90 / 20);
+            });
         }, 1000);
         
         let messageIndex = 0;
@@ -413,6 +451,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                 if (url) {
                     setMediaList([{ id: Date.now().toString(), type: PostType.VIDEO, url }]);
                     setVideoGenStatus(GenerationStatus.SUCCESS);
+                    setVideoProgress(100);
                     addToHistory('video', url, text);
                 } else {
                     throw new Error("Video generado pero sin URL");
@@ -440,15 +479,21 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
           setUrlError(null);
           return;
       }
-      try {
-          new URL(manualUrl);
-      } catch {
-          setUrlError("La URL no tiene un formato válido (ej: https://...).");
+      
+      // Verificación estricta de protocolo
+      if (!/^https?:\/\//i.test(manualUrl)) {
+          setUrlError("La URL debe comenzar con http:// o https://");
           return;
       }
 
       setIsValidatingUrl(true);
       setUrlError(null);
+
+      // Helper con timeout para no colgar la UI
+      const loadWithTimeout = (promise: Promise<boolean>, ms: number) => {
+          const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), ms));
+          return Promise.race([promise, timeout]);
+      };
 
       const validateImage = (url: string): Promise<boolean> => {
           return new Promise((resolve) => {
@@ -475,10 +520,10 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
           let validVideo = false;
 
           if (isVideoExt) {
-               validVideo = await validateVideo(manualUrl);
+               validVideo = await loadWithTimeout(validateVideo(manualUrl), 5000);
           } else {
-               validImage = await validateImage(manualUrl);
-               if (!validImage) validVideo = await validateVideo(manualUrl);
+               validImage = await loadWithTimeout(validateImage(manualUrl), 5000);
+               if (!validImage) validVideo = await loadWithTimeout(validateVideo(manualUrl), 5000);
           }
 
           if (validImage) {
@@ -490,7 +535,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
           } else if (validVideo) {
               setMediaList([{ id: Date.now().toString(), type: PostType.VIDEO, url: manualUrl }]);
           } else {
-              setUrlError("El archivo no es accesible o el formato no es compatible.");
+              setUrlError("El archivo no es accesible, tiene formato inválido o tardó mucho en responder.");
           }
           
           setManualUrl(''); 
@@ -515,10 +560,55 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
       setMediaList(prev => prev.filter(item => item.id !== id));
   };
 
+  // Drag & Drop Handlers for Media Reordering
+  const handleMediaDragStart = (index: number) => {
+      setDraggedItemIndex(index);
+  };
+
+  const handleMediaDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+      e.preventDefault();
+      if (draggedItemIndex === null) return;
+      if (draggedItemIndex !== index) {
+          const newMediaList = [...mediaList];
+          const draggedItem = newMediaList[draggedItemIndex];
+          newMediaList.splice(draggedItemIndex, 1);
+          newMediaList.splice(index, 0, draggedItem);
+          setMediaList(newMediaList);
+          setDraggedItemIndex(index);
+      }
+  };
+
+  const handleMediaDragEnd = () => {
+      setDraggedItemIndex(null);
+  };
+
+  // Drag & Drop Handlers for File Upload
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          processFiles(e.dataTransfer.files);
+      }
+  };
+
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (!files || files.length === 0) return;
+      processFiles(files);
+      e.target.value = ''; 
+  };
 
+  const processFiles = (files: FileList) => {
       const fileArray: File[] = Array.from(files);
       
       const newMediaItems: MediaItem[] = [];
@@ -544,8 +634,6 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
               return [...prev, ...newMediaItems];
           });
       }
-      
-      e.target.value = ''; 
   };
 
   const handleClearMedia = () => {
@@ -561,7 +649,6 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
   };
 
   const isPostEmpty = !text.trim() && mediaList.length === 0;
-  const isSubmitDisabled = urlError !== null || isValidatingUrl || isPostEmpty || selectedTargetIds.length === 0;
 
   const validateBeforeAction = () => {
       if (isPostEmpty) {
@@ -586,7 +673,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
       
       setPendingAction({
           type: 'POST_NOW',
-          post: { text, media: mediaList, placements },
+          post: { text, media: mediaList, placements, targeting, tone: selectedTone },
           targets
       });
       setShowConfirmationModal(true);
@@ -599,11 +686,18 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
       
       setPendingAction({
           type: 'SCHEDULE',
-          post: { text, media: mediaList, placements },
+          post: { text, media: mediaList, placements, targeting, tone: selectedTone },
           schedule,
           targets
       });
       setShowConfirmationModal(true);
+  };
+
+  const resetForm = () => {
+      setText('');
+      setMediaList([]);
+      setManualUrl('');
+      setGenerationError(null);
   };
 
   const confirmAction = () => {
@@ -611,8 +705,10 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
 
       if (pendingAction.type === 'POST_NOW') {
           onPostNow(pendingAction.post, pendingAction.targets);
+          resetForm();
       } else if (pendingAction.type === 'SCHEDULE') {
           onSchedulePost(pendingAction.post, pendingAction.schedule, pendingAction.targets);
+          resetForm();
       }
 
       setShowConfirmationModal(false);
@@ -646,6 +742,14 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
       if (isAllVisibleGroupsSelected) {
           setSelectedTargetIds(prev => prev.filter(id => !visibleGroupIds.includes(id)));
       } else {
+          const currentlySelected = selectedTargetIds.length;
+          const toAdd = visibleGroupIds.length;
+          if (currentlySelected + toAdd > MAX_TARGETS) {
+              setGenerationError(`⚠️ Selección masiva excede el límite de ${MAX_TARGETS} destinos.`);
+              setTimeout(() => setGenerationError(null), 3000);
+              return;
+          }
+          
           const newIds = new Set([...selectedTargetIds, ...visibleGroupIds]);
           setSelectedTargetIds(Array.from(newIds));
       }
@@ -665,17 +769,21 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
         }`}>
             {selectedTargetIds.includes(target.id) && <Icon name="check" size={3} className="text-white" />}
         </div>
-        <div className="relative flex-shrink-0">
+        <div className="relative flex-shrink-0 w-8 h-8">
+             <div className="absolute inset-0 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700">
+                 <Icon name={target.type === 'PAGE' ? 'flag' : 'users'} size={3} className="text-slate-600" />
+            </div>
             <img 
                 src={target.avatar} 
                 alt={target.name} 
-                className="w-8 h-8 rounded-full object-cover border border-slate-700 bg-slate-800" 
+                className="w-full h-full rounded-full object-cover relative z-10" 
+                onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0'; }}
             />
-            <div className="absolute -bottom-1 -right-1 bg-slate-900 rounded-full p-0.5 border border-slate-700">
+            <div className="absolute -bottom-1 -right-1 bg-slate-900 rounded-full p-0.5 border border-slate-700 z-20">
                 <Icon name={target.type === 'PAGE' ? 'flag' : 'users'} size={2} className={target.type === 'PAGE' ? 'text-blue-400' : 'text-purple-400'} />
             </div>
         </div>
-        <span className={`text-sm truncate ${selectedTargetIds.includes(target.id) ? 'text-white font-medium' : 'text-slate-400 group-hover:text-slate-300'}`}>
+        <span className={`text-sm truncate flex-1 ${selectedTargetIds.includes(target.id) ? 'text-white font-medium' : 'text-slate-400 group-hover:text-slate-300'}`}>
             {target.name}
         </span>
       </div>
@@ -697,9 +805,43 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
     </div>
   );
 
+  const getProgressColor = (percentage: number) => {
+      if (percentage > 90) return 'bg-red-500';
+      if (percentage > 70) return 'bg-yellow-500';
+      return 'bg-green-500';
+  };
+
+  const CreditBar = ({ type, label, count, limit, isPro }: { type: 'text'|'image'|'video', label: string, count: number, limit: number, isPro: boolean }) => {
+      const percentage = isPro ? 0 : getUsagePercentage(type);
+      const displayLimit = isPro ? '∞' : limit;
+      
+      return (
+        <div className="flex-1 min-w-[80px] group relative">
+             <div className="flex justify-between items-center mb-1">
+                 <span className="text-[10px] font-bold text-slate-400 uppercase">{label}</span>
+                 <span className={`text-[10px] font-mono ${credits[type] === 0 ? 'text-red-400' : 'text-slate-300'}`}>
+                     {isPro ? '∞' : credits[type]}<span className="text-slate-600">/{displayLimit}</span>
+                 </span>
+             </div>
+             <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                 {isPro ? (
+                     <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 w-full"></div>
+                 ) : (
+                     <div 
+                        className={`h-full rounded-full transition-all duration-500 ${getProgressColor(percentage)}`} 
+                        style={{ width: `${Math.min(100, percentage)}%` }}
+                     ></div>
+                 )}
+             </div>
+             <CreditTooltip text={isPro ? `${label} Ilimitado` : `${credits[type]} restantes de ${limit} diarios.`} />
+        </div>
+      );
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 relative animate-fade-in pb-20">
       
+      {/* MODALES */}
       {isSchedulerModalOpen && (
           <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[65] flex items-center justify-center p-4 animate-fade-in">
               <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -716,7 +858,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                       <Scheduler 
                         onPostNow={handlePostNowWrapper} 
                         onSchedulePost={handleScheduleWrapper} 
-                        disabled={isSubmitDisabled}
+                        disabled={false}
                         isFacebookLinked={isFacebookLinked}
                     />
                   </div>
@@ -788,6 +930,12 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                               </div>
                           </div>
                       </div>
+                      
+                      {pendingAction.post.targeting && (pendingAction.post.targeting.locations || pendingAction.post.targeting.interests) && (
+                          <div className="text-xs text-slate-400 bg-slate-900/30 p-2 rounded border border-slate-700">
+                               <p><span className="font-bold">Target:</span> {pendingAction.post.targeting.locations || 'Global'}, {pendingAction.post.targeting.ageMin}-{pendingAction.post.targeting.ageMax} años.</p>
+                          </div>
+                      )}
 
                       <div className="flex items-center gap-3 text-sm">
                           <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400">
@@ -845,7 +993,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
         
         <div id="tutorial-targets-section" className={`bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-lg ${getTutorialClass('tutorial-targets-section')}`}>
              <h3 className="text-sm font-bold text-white uppercase tracking-wide mb-3">Ubicaciones (Placements)</h3>
-             <div className="flex gap-4">
+             <div className="flex gap-4 mb-4">
                  <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer flex-1 transition-all ${placements.facebook ? 'bg-blue-900/20 border-blue-500' : 'bg-slate-900 border-slate-700 opacity-60'}`}>
                      <input type="checkbox" checked={placements.facebook} onChange={() => setPlacements(prev => ({...prev, facebook: !prev.facebook}))} className="hidden"/>
                      <div className={`w-5 h-5 rounded border flex items-center justify-center ${placements.facebook ? 'bg-blue-500 border-blue-500' : 'border-slate-500'}`}>
@@ -865,43 +1013,124 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                      </div>
                  </label>
              </div>
+
+             <div className="border-t border-slate-700 pt-3">
+                 <button 
+                    onClick={() => setIsTargetingExpanded(!isTargetingExpanded)}
+                    className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors w-full"
+                 >
+                     <Icon name="target" size={3} /> Configuración de Audiencia (Opcional)
+                     <Icon name="chevronDown" size={3} className={`transform transition-transform ${isTargetingExpanded ? 'rotate-180' : ''}`} />
+                 </button>
+                 
+                 {isTargetingExpanded && (
+                     <div className="mt-3 space-y-3 animate-fade-in bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                         <div className="grid grid-cols-2 gap-3">
+                             <div>
+                                 <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Edad Mín</label>
+                                 <input 
+                                    type="number" 
+                                    min="13" max="65"
+                                    value={targeting.ageMin}
+                                    onChange={(e) => setTargeting(prev => ({...prev, ageMin: parseInt(e.target.value)}))}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-sm text-white focus:ring-1 focus:ring-blue-500"
+                                 />
+                             </div>
+                             <div>
+                                 <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Edad Máx</label>
+                                 <input 
+                                    type="number" 
+                                    min="13" max="65"
+                                    value={targeting.ageMax}
+                                    onChange={(e) => setTargeting(prev => ({...prev, ageMax: parseInt(e.target.value)}))}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-sm text-white focus:ring-1 focus:ring-blue-500"
+                                 />
+                             </div>
+                         </div>
+                         <div>
+                             <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Ubicación (País/Ciudad)</label>
+                             <input 
+                                type="text" 
+                                placeholder="Ej: Madrid, México, Global"
+                                value={targeting.locations}
+                                onChange={(e) => setTargeting(prev => ({...prev, locations: e.target.value}))}
+                                className="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-sm text-white focus:ring-1 focus:ring-blue-500"
+                             />
+                         </div>
+                         <div>
+                             <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Intereses</label>
+                             <input 
+                                type="text" 
+                                placeholder="Ej: Tecnología, Deportes, Moda..."
+                                value={targeting.interests}
+                                onChange={(e) => setTargeting(prev => ({...prev, interests: e.target.value}))}
+                                className="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-sm text-white focus:ring-1 focus:ring-blue-500"
+                             />
+                         </div>
+                     </div>
+                 )}
+             </div>
         </div>
 
-        {/* CREDITS (Updated with Image Counter) */}
-        <div className={`bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-sm transition-all ${isTutorialActive ? 'opacity-30' : ''}`}>
-            <div className="flex items-center gap-3">
-                <div className="bg-blue-500/10 p-2 rounded-lg shrink-0"><Icon name="diamond" className="text-blue-400" size={5} /></div>
-                <div>
-                    <p className="text-sm font-bold text-white">Créditos IA Diarios</p>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                        <span className={`relative group text-xs px-2 py-0.5 rounded cursor-help ${credits.text === 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
-                            Texto: <strong>{credits.isPro || credits.text > 100 ? '∞' : credits.text}</strong>
-                            <CreditTooltip text="Usa Gemini Flash para generar descripciones virales ilimitadas." />
-                        </span>
-                         {/* Nuevo contador de imágenes */}
-                        <span className={`relative group text-xs px-2 py-0.5 rounded cursor-help ${credits.image === 0 ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                            Img: <strong>{credits.isPro ? '∞' : credits.image}</strong>
-                            <CreditTooltip text={credits.isPro ? "Imágenes ilimitadas." : "Límite de 50 imágenes al día."} />
-                        </span>
-                        <span className={`relative group text-xs px-2 py-0.5 rounded cursor-help ${credits.video === 0 ? 'bg-red-500/20 text-red-400' : 'bg-slate-700 text-slate-300'}`}>
-                            Video: <strong>{credits.isPro ? '∞' : credits.video}</strong>
-                            <CreditTooltip text={credits.isPro ? "¡Plan Pro activo! Videos ilimitados con Veo." : "Límite de 1 video diario. Actualiza a Pro para ilimitado."} />
-                        </span>
-                    </div>
-                </div>
+        {/* CREDITS WIDGET */}
+        <div className={`bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 shadow-sm transition-all ${isTutorialActive ? 'opacity-30' : ''}`}>
+            <div className="flex items-center gap-2 mb-3">
+                <Icon name="diamond" className="text-blue-400" size={4} />
+                <p className="text-sm font-bold text-white">Créditos Disponibles Hoy</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+                 <CreditBar type="text" label="Texto IA" count={credits.text} limit={FREE_PLAN_LIMITS.TEXT_DAILY} isPro={credits.isPro} />
+                 <CreditBar type="image" label="Imágenes" count={credits.image} limit={FREE_PLAN_LIMITS.IMAGE_DAILY} isPro={credits.isPro} />
+                 <CreditBar type="video" label="Video" count={credits.video} limit={FREE_PLAN_LIMITS.VIDEO_DAILY} isPro={credits.isPro} />
             </div>
             {!credits.isPro && (
-                <button onClick={() => setShowUpsellModal(true)} className="w-full sm:w-auto text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 px-4 py-3 sm:py-2 rounded-lg">Aumentar</button>
+                <button onClick={() => setShowUpsellModal(true)} className="w-full mt-4 text-xs font-bold text-white bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors">
+                    Aumentar Límites
+                </button>
             )}
         </div>
 
         {/* UNIFIED SUPER EDITOR */}
         <div id="tutorial-editor-section" className={`bg-slate-800 border border-slate-700 p-4 sm:p-6 rounded-xl shadow-lg transition-all duration-300 ${getTutorialClass('tutorial-editor-section')}`}>
-          <div className="flex justify-between items-center mb-4">
-              <label className="text-sm font-bold text-white uppercase tracking-wide">Editor</label>
+          <div id="header-actions" className="flex justify-between items-center mb-4 flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                  <button onClick={() => setIsTutorialActive(true)} className="text-slate-500 hover:text-blue-400 transition-colors p-1" title="Ver Tutorial"><Icon name="help" size={4} /></button>
+                  <label className="text-sm font-bold text-white uppercase tracking-wide">Editor</label>
+                  <div className="relative group ml-2">
+                      <div className="flex items-center gap-1 text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded cursor-pointer hover:bg-slate-600">
+                          <Icon name="magic" size={3} />
+                          <span>Tono: {selectedTone}</span>
+                      </div>
+                      <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-600 rounded shadow-xl hidden group-hover:grid grid-cols-1 w-32 z-20">
+                          {TONES.map(tone => (
+                              <button 
+                                key={tone}
+                                onClick={() => setSelectedTone(tone)}
+                                className={`text-left text-xs px-3 py-2 hover:bg-slate-700 ${selectedTone === tone ? 'text-blue-400 font-bold' : 'text-slate-300'}`}
+                              >
+                                  {tone}
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                  
                   <button onClick={handleExamplePrompt} className="text-xs bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 border border-blue-600/30"><Icon name="rocket" size={3} /> Idea Ejemplo</button>
+
+                  <button 
+                    onClick={handlePostNowWrapper}
+                    className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                      <Icon name="rocket" size={3} /> Publicar
+                  </button>
+
+                   <button 
+                    onClick={toggleSchedulerModal}
+                    className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                      <Icon name="calendar" size={3} /> Programar
+                  </button>
               </div>
           </div>
 
@@ -970,14 +1199,72 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                     Crear Video
                 </button>
             </div>
+            
+             {/* HISTORY TOGGLE */}
+             <div className="mt-4 border-t border-slate-700 pt-2">
+                <button 
+                    onClick={() => setShowHistory(!showHistory)}
+                    className="flex items-center gap-2 text-xs text-slate-400 hover:text-blue-400 transition-colors w-full py-1"
+                >
+                    <Icon name="history" size={3} />
+                    <span className="font-medium">
+                        {showHistory ? 'Ocultar Historial' : `Ver Historial de Generación (${generationHistory.length})`}
+                    </span>
+                    <Icon name="chevronDown" size={3} className={`ml-auto transform transition-transform ${showHistory ? 'rotate-180' : ''}`} />
+                </button>
+
+                {showHistory && (
+                    <div className="mt-2 bg-slate-900/50 border border-slate-700 rounded-lg p-2 space-y-2 max-h-60 overflow-y-auto custom-scrollbar animate-fade-in">
+                        <div className="flex justify-between items-center mb-2 px-1">
+                             <span className="text-[10px] text-slate-500 uppercase font-bold">Recientes</span>
+                             {generationHistory.length > 0 && (
+                                 <button onClick={clearHistory} className="text-[10px] text-red-400 hover:text-white">Borrar todo</button>
+                             )}
+                        </div>
+                        {generationHistory.length === 0 && <p className="text-xs text-slate-500 text-center py-4 italic">No hay historial reciente.</p>}
+                        {generationHistory.map(item => (
+                            <div key={item.id} className="flex items-center justify-between bg-slate-800 p-2 rounded border border-slate-700/50 hover:border-slate-600 transition-colors group">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className="bg-slate-700 p-1.5 rounded text-slate-300 shrink-0">
+                                        <Icon name={item.type === 'text' ? 'text' : item.type === 'image' ? 'image' : 'video'} size={3} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] text-slate-300 truncate font-medium leading-tight">"{item.prompt}"</p>
+                                        <p className="text-[9px] text-slate-500 truncate">
+                                            {item.type === 'text' ? 'Texto generado' : 'Multimedia generada'} · {item.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => restoreFromHistory(item)}
+                                    className="text-[10px] bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white px-2 py-1 rounded transition-colors ml-2 font-medium opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                >
+                                    Usar
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             {videoGenStatus === GenerationStatus.LOADING && (
-              <div className="mt-4 p-3 bg-slate-900/50 rounded-lg border border-slate-700 flex items-center justify-between">
-                  <div className="flex items-center gap-3 overflow-hidden">
-                      <Spinner size={4} />
-                      <span className="text-sm text-slate-300 animate-pulse truncate">{videoLoadingMessage}</span>
+              <div className="mt-4 p-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-xl border border-blue-500/30 flex flex-col gap-3 shadow-inner">
+                  <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="relative">
+                             <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20"></div>
+                             <Spinner size={5} />
+                          </div>
+                          <div className="flex flex-col">
+                              <span className="text-sm font-bold text-white animate-pulse">{videoLoadingMessage}</span>
+                              <span className="text-xs text-slate-400">Esto puede tomar unos segundos...</span>
+                          </div>
+                      </div>
+                      <span className="text-sm font-mono text-blue-300 bg-slate-900/50 border border-slate-700 px-3 py-1 rounded-lg shrink-0">{formatTime(videoGenElapsedTime)}</span>
                   </div>
-                  <span className="text-xs font-mono text-blue-400 bg-blue-900/20 px-2 py-1 rounded shrink-0">{formatTime(videoGenElapsedTime)}</span>
+                  <div className="w-full bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                      <div className="h-full bg-blue-500 transition-all duration-1000 ease-out" style={{width: `${videoProgress}%`}}></div>
+                  </div>
               </div>
             )}
 
@@ -994,7 +1281,15 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                 {mediaList.length > 0 && (
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
                         {mediaList.map((item, index) => (
-                            <div key={item.id} className="relative aspect-square rounded-lg overflow-hidden border border-slate-700 group">
+                            <div 
+                                key={item.id} 
+                                draggable
+                                onDragStart={() => handleMediaDragStart(index)}
+                                onDragOver={(e) => handleMediaDragOver(e, index)}
+                                onDragEnd={handleMediaDragEnd}
+                                className={`relative aspect-square rounded-lg overflow-hidden border border-slate-700 group cursor-move ${draggedItemIndex === index ? 'opacity-50 ring-2 ring-blue-500' : ''}`}
+                                title="Arrastra para reordenar"
+                            >
                                 {item.type === PostType.IMAGE ? (
                                     <img src={item.url} alt="thumbnail" className="w-full h-full object-cover" />
                                 ) : (
@@ -1002,7 +1297,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                                 )}
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                     <button 
-                                        onClick={() => handleRemoveMediaItem(item.id)}
+                                        onClick={(e) => { e.stopPropagation(); handleRemoveMediaItem(item.id); }}
                                         className="bg-red-600/80 text-white p-1.5 rounded-full hover:bg-red-500 transition-colors"
                                     >
                                         <Icon name="x" size={3} />
@@ -1051,7 +1346,15 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                              <div className="flex-grow border-t border-slate-700"></div>
                         </div>
 
-                        <div className="border-2 border-dashed border-slate-700 rounded-lg p-4 text-center hover:bg-slate-800 transition-colors cursor-pointer group relative flex flex-col items-center justify-center gap-2">
+                        {/* DROPZONE */}
+                        <div 
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer group relative flex flex-col items-center justify-center gap-2 ${
+                                isDragOver ? 'border-blue-500 bg-blue-900/20' : 'border-slate-700 hover:bg-slate-800'
+                            }`}
+                        >
                             <input
                                 type="file"
                                 multiple 
@@ -1060,54 +1363,28 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                                 onChange={handleFilesSelected}
                             />
                             <div className="pointer-events-none flex flex-col items-center">
-                                <Icon name="upload" className="text-slate-500 group-hover:text-blue-400 transition-colors mb-1" size={6} />
-                                <p className="text-xs text-slate-400 group-hover:text-slate-300">Arrastra archivos aquí o haz clic</p>
+                                <Icon name="upload" className={`${isDragOver ? 'text-blue-400' : 'text-slate-500 group-hover:text-blue-400'} transition-colors mb-1`} size={6} />
+                                <p className="text-xs text-slate-400 group-hover:text-slate-300">
+                                    {isDragOver ? '¡Suelta los archivos!' : 'Arrastra archivos aquí o haz clic'}
+                                </p>
                             </div>
                         </div>
                     </div>
                 )}
             </div>
-
-            {generationHistory.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-slate-700">
-                  <div className="flex justify-between items-center mb-2">
-                    <button onClick={() => setShowHistory(!showHistory)} className="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors font-bold uppercase tracking-wide p-2 -ml-2">
-                        <Icon name="history" size={3}/> Historial Reciente ({generationHistory.length}) <span className="text-[10px]">{showHistory ? '▲' : '▼'}</span>
-                    </button>
-                    {showHistory && <button onClick={clearHistory} className="text-xs text-red-400 hover:text-red-300 hover:underline p-2">Borrar historial</button>}
-                  </div>
-                  {showHistory && (
-                      <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1 bg-slate-900/30 rounded-lg p-2">
-                          {generationHistory.map(item => (
-                              <div key={item.id} className="flex items-center justify-between bg-slate-800 p-3 rounded border border-slate-700 hover:border-blue-500/50 transition-colors group shadow-sm">
-                                  <div className="flex items-center gap-3 overflow-hidden">
-                                      <div className="bg-slate-900 p-2 rounded-lg shrink-0 border border-slate-700">
-                                          <Icon name={item.type === 'text' ? 'text' : item.type === 'image' ? 'image' : 'video'} size={4} className={item.type === 'text' ? 'text-slate-400' : 'text-blue-400'}/>
-                                      </div>
-                                      <div className="min-w-0">
-                                          <p className="text-xs text-slate-200 truncate font-medium mb-0.5">{item.prompt}</p>
-                                      </div>
-                                  </div>
-                                  <button onClick={() => restoreFromHistory(item)} className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded transition-colors shadow-sm shrink-0 ml-2">Usar</button>
-                              </div>
-                          ))}
-                      </div>
-                  )}
-              </div>
-          )}
-
           </div>
         </div>
-            
-            <div id="tutorial-targets-section" className={`pt-4 border-t border-slate-700 mt-4 transition-all duration-300 rounded-lg p-1 ${getTutorialClass('tutorial-targets-section')}`}>
-                <div 
+        
+        {/* SECCIÓN TARGETS */}
+        <div id="tutorial-targets-section" className={`pt-4 border-t border-slate-700 mt-4 transition-all duration-300 rounded-lg p-1 ${getTutorialClass('tutorial-targets-section')}`}>
+             <div 
                     className="flex flex-col gap-3 mb-4 cursor-pointer"
                     onClick={() => setIsTargetsExpanded(!isTargetsExpanded)}
                 >
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center bg-slate-900 border border-slate-700 p-3 rounded-lg shadow-md hover:border-slate-600 transition-all z-50 relative">
                          <div>
                             <label className="text-xs font-bold text-slate-300 block uppercase tracking-wider">Cuentas Conectadas</label>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Selecciona páginas y grupos</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">Selecciona páginas y grupos <span className="text-blue-400">({selectedTargetIds.length}/{MAX_TARGETS})</span></p>
                          </div>
                          <Icon name="chevronDown" className={`text-slate-400 transform transition-transform duration-300 ${isTargetsExpanded ? 'rotate-180' : ''}`} size={5} />
                     </div>
@@ -1129,7 +1406,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                         <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden max-h-64 overflow-y-auto custom-scrollbar relative">
                             {pages.length > 0 && (
                                 <div className="pb-2">
-                                    <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-3 py-2 mb-1 flex items-center gap-2">
+                                    <div className="sticky top-0 z-40 bg-slate-900 border-b border-slate-800 px-3 py-2 mb-1 flex items-center gap-2 shadow-md">
                                         <Icon name="flag" size={3} className="text-blue-400"/><h4 className="text-xs font-bold text-slate-400 uppercase">Tus Páginas Comerciales</h4>
                                     </div>
                                     <div className="space-y-1 px-2">{pages.map(page => <TargetRow key={page.id} target={page} />)}</div>
@@ -1137,7 +1414,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                             )}
                             {groups.length > 0 && (
                                 <div className="pb-2">
-                                     <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-3 py-2 mb-1 flex items-center justify-between">
+                                     <div className="sticky top-0 z-40 bg-slate-900 border-b border-slate-800 px-3 py-2 mb-1 flex items-center justify-between shadow-md">
                                         <div className="flex items-center gap-2">
                                             <Icon name="users" size={3} className="text-purple-400"/><h4 className="text-xs font-bold text-slate-400 uppercase">Grupos ({selectedVisibleGroupsCount}/{groups.length})</h4>
                                         </div>
@@ -1152,6 +1429,12 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                                     <div className="space-y-1 px-2 mt-2">{groups.map(group => <TargetRow key={group.id} target={group} />)}</div>
                                 </div>
                             )}
+                            {filteredTargets.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-8 text-slate-500">
+                                    <Icon name="search" size={6} className="opacity-20 mb-2"/>
+                                    <p className="text-xs">No se encontraron destinos.</p>
+                                </div>
+                            )}
                         </div>
                         <div className="mt-3 flex items-center justify-between text-xs text-slate-400 px-1">
                             <span><strong className="text-white">{selectedTargetIds.length}</strong> destinos seleccionados</span>
@@ -1159,21 +1442,10 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                         </div>
                     </div>
                 </div>
-            </div>
+        </div>
       </div>
 
       <div className="space-y-6">
-        
-        <button 
-            id="btn-config-main"
-            onClick={toggleSchedulerModal}
-            disabled={isSubmitDisabled}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-blue-900/30 transform hover:translate-y-[-1px] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none"
-        >
-            <Icon name="rocket" size={5} /> 
-            <span className="text-lg">🚀 Configurar Publicación</span>
-        </button>
-
         <div className={`bg-slate-800 border border-slate-700 p-4 sm:p-6 rounded-xl shadow-lg transition-all duration-300 ${isTutorialActive ? 'opacity-30 pointer-events-none' : ''}`}>
             <label className="block text-sm font-bold text-white uppercase tracking-wide mb-4">Vista Previa</label>
             <PostPreview 
@@ -1183,7 +1455,6 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostNow, onSchedulePos
                 onClearMedia={() => setMediaList([])} 
             />
         </div>
-
       </div>
     </div>
   );

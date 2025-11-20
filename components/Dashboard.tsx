@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Icon } from './Icon';
 import { MetricCard } from './MetricCard';
@@ -10,32 +11,44 @@ interface DashboardProps {
   history: ScheduledPost[];
   createPost: () => void;
   isFacebookLinked: boolean;
+  onEditPost: (post: ScheduledPost) => void; // Nueva prop
 }
 
-const PostItem: React.FC<{ post: ScheduledPost }> = ({ post }) => {
+const PostItem: React.FC<{ post: ScheduledPost, onEdit: (p: ScheduledPost) => void }> = ({ post, onEdit }) => {
   const textSnippet = post.post.text.substring(0, 50) + (post.post.text.length > 50 ? '...' : '');
   const publishDate = new Date(post.publishAt);
 
   return (
-    <li className="flex items-center justify-between py-2 border-b border-slate-700/50">
-      <div className="flex-1 min-w-0">
+    <li className="flex items-center justify-between py-2 border-b border-slate-700/50 group">
+      <div className="flex-1 min-w-0 mr-2">
         <p className="text-sm font-medium text-white truncate">{textSnippet || "Publicación con multimedia"}</p>
         <p className="text-xs text-slate-400">
           {publishDate.toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
-      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-        post.status === PostStatus.SCHEDULED ? 'bg-yellow-500/20 text-yellow-300' :
-        post.status === PostStatus.PUBLISHED ? 'bg-green-500/20 text-green-300' :
-        'bg-red-500/20 text-red-300'
-      }`}>
-        {post.status}
-      </span>
+      <div className="flex items-center gap-2">
+          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+            post.status === PostStatus.SCHEDULED ? 'bg-yellow-500/20 text-yellow-300' :
+            post.status === PostStatus.PUBLISHED ? 'bg-green-500/20 text-green-300' :
+            'bg-red-500/20 text-red-300'
+          }`}>
+            {post.status}
+          </span>
+          {post.status === PostStatus.SCHEDULED && (
+              <button 
+                onClick={() => onEdit(post)}
+                className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-slate-700 rounded transition-colors opacity-0 group-hover:opacity-100"
+                title="Editar publicación"
+              >
+                  <Icon name="create" size={4} /> {/* Usamos create como lápiz/editar */}
+              </button>
+          )}
+      </div>
     </li>
   );
 };
 
-export const Dashboard: React.FC<DashboardProps> = ({ scheduledPosts, history, createPost, isFacebookLinked }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ scheduledPosts, history, createPost, isFacebookLinked, onEditPost }) => {
     const upcomingPosts = scheduledPosts.filter(p => p.status === PostStatus.SCHEDULED).slice(0, 5);
     const recentActivity = history.slice(0, 5);
 
@@ -65,7 +78,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ scheduledPosts, history, c
                 </h3>
                 {upcomingPosts.length > 0 ? (
                     <ul className="space-y-2">
-                        {upcomingPosts.map(p => <PostItem key={p.id} post={p} />)}
+                        {upcomingPosts.map(p => <PostItem key={p.id} post={p} onEdit={onEditPost} />)}
                     </ul>
                 ) : (
                     <div className="text-center py-10 text-slate-500">
@@ -84,7 +97,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ scheduledPosts, history, c
                 </h3>
                 {recentActivity.length > 0 ? (
                     <ul className="space-y-2">
-                        {recentActivity.map(p => <PostItem key={p.id} post={p} />)}
+                        {recentActivity.map(p => <PostItem key={p.id} post={p} onEdit={onEditPost} />)}
                     </ul>
                 ) : (
                     <div className="text-center py-10 text-slate-500">

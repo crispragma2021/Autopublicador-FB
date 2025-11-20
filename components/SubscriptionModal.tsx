@@ -25,7 +25,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ onClose })
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
             <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="bg-slate-900/50 p-6 flex justify-between items-center border-b border-slate-700">
                     <div className="flex items-center gap-3">
