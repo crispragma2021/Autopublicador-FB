@@ -1,15 +1,26 @@
+
 export enum PostType {
   TEXT = 'text',
   IMAGE = 'image',
   VIDEO = 'video',
 }
 
-export interface Post {
-  text: string;
-  media?: {
+export interface MediaItem {
+    id: string;
     type: PostType.IMAGE | PostType.VIDEO;
     url: string;
-  };
+    file?: File; // Opcional para subidas locales
+}
+
+export interface Placements {
+    facebook: boolean;
+    instagram: boolean;
+}
+
+export interface Post {
+  text: string;
+  media: MediaItem[]; 
+  placements?: Placements; // Nuevo campo para FB/IG
 }
 
 export enum PostStatus {
@@ -45,6 +56,12 @@ interface SpecificDaysSchedule {
 
 export type ScheduleOptions = IntervalSchedule | SpecificDaysSchedule;
 
+export interface FacebookTarget {
+    id: string;
+    name: string;
+    type: 'PAGE' | 'GROUP';
+    avatar?: string; 
+}
 
 export interface ScheduledPost {
   id: number;
@@ -52,6 +69,7 @@ export interface ScheduledPost {
   schedule: ScheduleOptions;
   status: PostStatus;
   publishAt: Date;
+  targets: FacebookTarget[];
 }
 
 export enum GenerationStatus {
@@ -62,3 +80,16 @@ export enum GenerationStatus {
 }
 
 export type AppView = 'DASHBOARD' | 'CREATE' | 'CONTENT';
+
+export interface UserUsage {
+    textCount: number;
+    imageCount: number; // Nuevo contador para imágenes
+    videoCount: number;
+    lastResetDate: string;
+}
+
+export const FREE_PLAN_LIMITS = {
+    TEXT_DAILY: 1000, 
+    IMAGE_DAILY: 50, // Límite tangible para mostrar contador
+    VIDEO_DAILY: 1,
+};

@@ -4,17 +4,21 @@ import { Icon } from './Icon';
 
 export const WarningBanner: React.FC = () => {
   return (
-    <div className="bg-yellow-500/10 border-l-4 border-yellow-400 text-yellow-300 p-4 rounded-md shadow-lg" role="alert">
-      <div className="flex items-center">
+    <div className="bg-blue-900/30 border-l-4 border-blue-500 text-blue-100 p-4 rounded-r-md shadow-lg mb-6" role="alert">
+      <div className="flex items-start">
         <div className="py-1">
-          <Icon name="warning" className="h-6 w-6 text-yellow-400 mr-4" />
+          <Icon name="lock" className="h-6 w-6 text-blue-400 mr-4" />
         </div>
         <div>
-          <p className="font-bold">¡Atención! Uso Responsable</p>
-          <p className="text-sm">
-            La automatización excesiva o el contenido repetitivo pueden violar las políticas de Facebook y poner en riesgo tu cuenta.
-            Utiliza la función de <strong>retraso aleatorio</strong> y genera <strong>contenido variado</strong> con la IA para minimizar los riesgos. Publica con moderación.
+          <p className="font-bold text-blue-300">🛡️ Protección Anti-Spam Activa</p>
+          <p className="text-sm mt-1 text-slate-300 leading-relaxed">
+            Para evitar el bloqueo de tu cuenta ("Facebook Jail"), esta aplicación aplica automáticamente:
           </p>
+          <ul className="list-disc list-inside text-xs mt-2 text-slate-400 space-y-1 ml-1">
+            <li><strong>Humanización:</strong> Añade variaciones aleatorias de tiempo a tus horarios.</li>
+            <li><strong>Límite Diario:</strong> Máximo 20 publicaciones cada 24 horas.</li>
+            <li><strong>Enfriamiento:</strong> Mínimo 30 minutos entre cada publicación.</li>
+          </ul>
         </div>
       </div>
     </div>
