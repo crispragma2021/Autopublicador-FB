@@ -1,17 +1,27 @@
 // frontend-api.js: Adaptador para conectar React con Cloudflare Workers
-const WORKER_URL = "TU_URL_DEL_WORKER_REAL"; // ¡URL CORREGIDA!
+const WORKER_URL = "https://SAF925af.autopublicador-backend.pages.dev"; // ¡URL REAL OBTENIDA DEL PANEL!
 
 export const api = {
+  /**
+   * Generar contenido multimedia.
+   */
   async generate(prompt, userId, type = 'image') {
     const response = await fetch(`${WORKER_URL}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, userId, type })
     });
-    if (response.status === 402) throw new Error("PAYMENT_REQUIRED"); 
-    if (!response.ok) throw new Error("Error en generación"); 
+    if (response.status === 402) {
+      throw new Error("PAYMENT_REQUIRED"); 
+    }
+    
+    if (!response.ok) throw new Error("Error en generación");
     return await response.json(); 
   },
+
+  /**
+   * Guardar la clave API propia del usuario (BYOK)
+   */
   async saveByokKey(userId, apiKey) {
     await fetch(`${WORKER_URL}/api/save-byok`, {
       method: 'POST',
@@ -19,6 +29,10 @@ export const api = {
       body: JSON.stringify({ userId, apiKey })
     });
   },
+
+  /**
+   * Obtener enlace de pago para recargar créditos
+   */
   async createCheckoutSession(userId, planId) {
     const response = await fetch(`${WORKER_URL}/api/create-checkout`, {
         method: 'POST',
