@@ -1,0 +1,4 @@
+./index.html
+./metadata.json
+./package.json
+./tsconfig.json
