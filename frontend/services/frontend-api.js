@@ -1,5 +1,5 @@
 // frontend-api.js: Adaptador para conectar React con Cloudflare Workers
-const WORKER_URL = "https://autopublicador-backend.pages.dev"; // ¡URL REAL CONFIGURADA!
+const WORKER_URL = "TU_URL_DEL_WORKER_AQUI"; // ¡ESTA DEBE SER LA URL .workers.dev!
 
 export const api = {
   /**
@@ -15,7 +15,7 @@ export const api = {
     if (response.status === 402) {
       throw new Error("PAYMENT_REQUIRED"); // Manejar en UI abriendo modal de pagos
     }
-
+    
     if (!response.ok) throw new Error("Error en generación");
     return await response.json(); // Retorna { url: "...", mode: "TRIAL" }
   },
@@ -41,7 +41,7 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, planId })
-      });
+    });
     const data = await response.json();
     window.location.href = data.checkoutUrl;
   }
