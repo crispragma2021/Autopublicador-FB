@@ -2,28 +2,16 @@
 const WORKER_URL = "TU_URL_DEL_WORKER_REAL"; // ¡URL CORREGIDA!
 
 export const api = {
-  /**
-   * Generar contenido multimedia.
-   * Maneja automáticamente la lógica de Prueba/Créditos/BYOK en el backend.
-   */
   async generate(prompt, userId, type = 'image') {
     const response = await fetch(`${WORKER_URL}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, userId, type })
     });
-    if (response.status === 402) {
-      throw new Error("PAYMENT_REQUIRED"); // Manejar en UI abriendo modal de pagos
-    }
-    
-    // Si el worker responde con 500, el frontend mostrará "Servicio IA no disponible"
+    if (response.status === 402) throw new Error("PAYMENT_REQUIRED"); 
     if (!response.ok) throw new Error("Error en generación"); 
-    return await response.json(); // Retorna { url: "...", mode: "TRIAL" }
+    return await response.json(); 
   },
-
-  /**
-   * Guardar la clave API propia del usuario (BYOK)
-   */
   async saveByokKey(userId, apiKey) {
     await fetch(`${WORKER_URL}/api/save-byok`, {
       method: 'POST',
@@ -31,10 +19,6 @@ export const api = {
       body: JSON.stringify({ userId, apiKey })
     });
   },
-
-  /**
-   * Obtener enlace de pago para recargar créditos
-   */
   async createCheckoutSession(userId, planId) {
     const response = await fetch(`${WORKER_URL}/api/create-checkout`, {
         method: 'POST',
