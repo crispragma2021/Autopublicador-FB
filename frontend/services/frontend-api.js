@@ -1,5 +1,5 @@
 // frontend-api.js: Adaptador para conectar React con Cloudflare Workers
-const WORKER_URL = "TU_URL_DEL_WORKER_AQUI"; // ¡ESTA DEBE SER LA URL .workers.dev!
+const WORKER_URL = "TU_URL_DEL_WORKER_REAL"; // ¡URL CORREGIDA!
 
 export const api = {
   /**
@@ -16,7 +16,8 @@ export const api = {
       throw new Error("PAYMENT_REQUIRED"); // Manejar en UI abriendo modal de pagos
     }
     
-    if (!response.ok) throw new Error("Error en generación");
+    // Si el worker responde con 500, el frontend mostrará "Servicio IA no disponible"
+    if (!response.ok) throw new Error("Error en generación"); 
     return await response.json(); // Retorna { url: "...", mode: "TRIAL" }
   },
 
@@ -35,8 +36,6 @@ export const api = {
    * Obtener enlace de pago para recargar créditos
    */
   async createCheckoutSession(userId, planId) {
-    // Esto normalmente llamaría a otro endpoint del worker que crea la sesión de Stripe
-    // y devuelve la URL de redirección.
     const response = await fetch(`${WORKER_URL}/api/create-checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
