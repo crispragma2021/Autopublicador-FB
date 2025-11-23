@@ -1,0 +1,24 @@
+name: 🐛 Debug Full Structure
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔍 Debug complete structure
+        run: |
+          echo "=== STRUCTURE ==="
+          ls -la
+          echo "=== BACKEND STRUCTURE ==="
+          ls -la backend/ || echo "Backend folder not found"
+          echo "=== GIT FILES ==="
+          git ls-files
+          echo "=== FIND WORKER FILES ==="
+          find . -name "worker.js" -type f 2>/dev/null || echo "No worker.js found"
+          find . -name "wrangler.toml" -type f 2>/dev/null || echo "No wrangler.toml found"
