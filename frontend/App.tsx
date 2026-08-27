@@ -218,16 +218,8 @@ const App: React.FC = () => {
         return; 
     }
 
-    setTimeout(() => {
-        const mockToken = 'mock_access_token_' + Date.now();
-        const mockUserId = 'fb_user_' + Math.floor(Math.random() * 100000); 
-        
-        localStorage.setItem('fb_access_token', mockToken);
-        localStorage.setItem('fb_user_id', mockUserId); 
-        
-        setIsFacebookLinked(true);
-        setIsLinking(false);
-    }, 1500); 
+    setIsLinking(false);
+    alert('Meta no está configurado. Añade FACEBOOK_APP_ID y usa el login real de Facebook.');
   };
 
   const handleUnlinkFacebook = () => {

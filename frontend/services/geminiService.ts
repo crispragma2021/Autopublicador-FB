@@ -1,47 +1,46 @@
-import { GoogleGenAI } from '@google/genai';
+const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 
-// Usaremos la API Key directamente desde el entorno (o inyectada al frontend)
-// Esto asume que tienes process.env.VITE_GEMINI_API_KEY o similar configurado
-// NOTA: Si esta clave no está configurada como una Variable de Entorno de Cloudflare Pages (prefijo VITE_), esto fallará.
-const API_KEY = process.env.VITE_GEMINI_API_KEY || 'WORKER_FAILED_USE_API_KEY';
-
-if (API_KEY === 'WORKER_FAILED_USE_API_KEY' || !API_KEY) {
-    console.error("ADVERTENCIA: API Key no inyectada en el Frontend. La IA no funcionará directamente.");
+const callWorker = async (path: string, body: Record<string, unknown>) => {
+  const response = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.error || 'El servicio IA no está disponible')
+  return data
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+export const generateText = async (prompt: string, tone = 'professional'): Promise<string> => {
+  const data = await callWorker('/api/generate-content', { topic: prompt, platform: 'facebook', tone })
+  return data.generatedContent
+}
 
-export const generateIdea = async (prompt) => {
+export const generateIdea = async (prompt: string) => {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: `Genera una idea de publicación corta para redes sociales basada en: ${prompt}` }] }],
-    });
-    
-    return { success: true, text: response.text };
-
+    return { success: true, text: await generateText(prompt) }
   } catch (error) {
-    console.error("Error al generar idea directamente con Gemini:", error);
-    return { success: false, error: "Servicio IA no disponible (Error en llamada directa a la API)." };
+    console.error('Error generando idea en Worker:', error)
+    return { success: false, error: 'Servicio IA no disponible.' }
   }
-};
+}
 
-export const improveText = async (textToImprove) => {
+export const improveText = async (textToImprove: string) => {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: `Mejora y haz más profesional el siguiente texto para una publicación en redes sociales: "${textToImprove}"` }] }],
-    });
-    
-    return { success: true, text: response.text };
-
+    const data = await callWorker('/api/improve-text', { textToImprove, style: 'professional' })
+    return { success: true, text: data.improvedText }
   } catch (error) {
-    console.error("Error al mejorar texto directamente con Gemini:", error);
-    return { success: false, error: "Servicio IA no disponible (Error en llamada directa a la API)." };
+    console.error('Error mejorando texto en Worker:', error)
+    return { success: false, error: 'Servicio IA no disponible.' }
   }
-};
+}
 
-export const generateImage = async (prompt) => {
-  console.warn("La generación de imágenes/video ha sido deshabilitada en el Frontend directo.");
-  return { success: false, error: "Generación de imagen/video deshabilitada en modo directo." };
-};
+export const generateImage = async (): Promise<string> => {
+  throw new Error('La generación de imágenes todavía no está implementada en el Worker.')
+}
+
+export const generateVideo = async (): Promise<{ operationName: string }> => {
+  throw new Error('La generación de video todavía no está implementada en el Worker.')
+}
+
+export const checkVideoStatus = async (): Promise<{ done: boolean; url?: string }> => ({ done: false })

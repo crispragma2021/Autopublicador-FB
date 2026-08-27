@@ -22,10 +22,8 @@ const logFacebookEvent = (action: string, details: any, type: 'info' | 'error' |
  * Obtiene las Páginas y Grupos reales conectados al usuario mediante Graph API.
  */
 export const getConnectedTargets = async (): Promise<FacebookTarget[]> => {
-    // Si no hay SDK real cargado o no está conectado, devolvemos mock o vacío
     if (!window.FB) {
-        console.warn("Facebook SDK no detectado. Usando modo simulación.");
-        return getSimulatedTargets(); 
+        throw new Error('La conexión con Meta no está disponible. Configura FACEBOOK_APP_ID e inicia sesión.');
     }
 
     return new Promise((resolve) => {
@@ -33,8 +31,7 @@ export const getConnectedTargets = async (): Promise<FacebookTarget[]> => {
         window.FB.api('/me/accounts', { fields: 'name,id,access_token,picture{url}' }, (response: any) => {
             if (!response || response.error) {
                 console.error("Error fetching pages:", response?.error);
-                // Fallback a simulación si falla la API real (para pruebas)
-                resolve(getSimulatedTargets());
+                resolve([]);
                 return;
             }
 
@@ -54,18 +51,6 @@ export const getConnectedTargets = async (): Promise<FacebookTarget[]> => {
     });
 };
 
-// Función auxiliar para mantener la demo funcionando si no hay API Key real
-const getSimulatedTargets = async (): Promise<FacebookTarget[]> => {
-     return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve([
-                { id: 'page_mock_1', name: 'Página Demo (Simulada)', type: 'PAGE', avatar: 'https://picsum.photos/seed/brand/100/100' },
-                { id: 'g_mock_1', name: 'Grupo Demo (Simulado)', type: 'GROUP', avatar: 'https://picsum.photos/seed/neighbor/100/100' },
-            ]);
-        }, 500);
-    });
-}
-
 /**
  * Publica contenido real en Facebook utilizando la Graph API.
  */
@@ -73,8 +58,7 @@ export const postToFacebook = async (post: Post, targetIds: string[]): Promise<v
     logFacebookEvent('Iniciando Publicación', { targetIds, post }, 'info');
 
     if (!window.FB) {
-        console.log("Modo Simulación: Publicación exitosa (sin API real)");
-        return new Promise(r => setTimeout(r, 1500));
+        throw new Error('La conexión con Meta no está disponible.');
     }
 
     // Necesitamos recuperar los targets completos para tener sus access_tokens
@@ -89,10 +73,8 @@ export const postToFacebook = async (post: Post, targetIds: string[]): Promise<v
     const promises = selectedTargets.map(target => {
         return new Promise<void>((resolve, reject) => {
             
-            // Si es simulación (no tiene token real), simulamos y retornamos
             if (!target.accessToken) {
-                console.log(`Simulando post en ${target.name}`);
-                setTimeout(resolve, 1000);
+                reject(new Error(`La cuenta ${target.name} no tiene un token válido de Meta.`));
                 return;
             }
 

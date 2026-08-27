@@ -1,0 +1,16 @@
+name = "autopublicador-backend"
+compatibility_date = "2024-11-23"
+compatibility_flags = ["nodejs_compat"]
+
+main = "worker.js"
+compatibility_date = "2024-11-23"
+
+[env.production]
+account_id = "e153b7cc155a9bc662225c17078a1"
+workers_dev = true
+
+[vars]
+NODE_ENV = "production"
+
+# Las variables se configuran en Cloudflare Dashboard
+# DEEPSEEK_API_KEY = "configurar-en-dashboard"

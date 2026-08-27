@@ -1,32 +1,34 @@
 // frontend-api.js: Adaptador para conectar React con Cloudflare Workers
-const WORKER_URL = "https://SAF925af.autopublicador-backend.pages.dev"; // ¡URL REAL OBTENIDA DEL PANEL!
+const WORKER_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
+const request = async (path, options = {}) => {
+  const response = await fetch(`${WORKER_URL}${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Error en ${path}`);
+  return data;
+};
 
 export const api = {
   /**
    * Generar contenido multimedia.
    */
   async generate(prompt, userId, type = 'image') {
-    const response = await fetch(`${WORKER_URL}/api/generate`, {
+    return request('/api/generate-content', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, userId, type })
+      body: JSON.stringify({ topic: prompt, userId, type }),
     });
-    if (response.status === 402) {
-      throw new Error("PAYMENT_REQUIRED"); 
-    }
-    
-    if (!response.ok) throw new Error("Error en generación");
-    return await response.json(); 
   },
 
   /**
    * Guardar la clave API propia del usuario (BYOK)
    */
   async saveByokKey(userId, apiKey) {
-    await fetch(`${WORKER_URL}/api/save-byok`, {
+    return request('/api/save-byok', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, apiKey })
+      body: JSON.stringify({ userId, apiKey }),
     });
   },
 
@@ -34,12 +36,11 @@ export const api = {
    * Obtener enlace de pago para recargar créditos
    */
   async createCheckoutSession(userId, planId) {
-    const response = await fetch(`${WORKER_URL}/api/create-checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, planId })
+    const data = await request('/api/create-checkout', {
+      method: 'POST',
+      body: JSON.stringify({ userId, planId }),
     });
-    const data = await response.json();
+    if (!data.checkoutUrl) throw new Error('El checkout no está configurado en el Worker');
     window.location.href = data.checkoutUrl;
   }
 };
