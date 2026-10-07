@@ -104,7 +104,7 @@ export const generateVideo = async (prompt: string): Promise<{operationName: str
 export const checkVideoStatus = async (operationName: string): Promise<{done: boolean, url?: string}> => {
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        let operation = await ai.operations.getVideosOperation({ operation: operationName });
+        let operation = await ai.operations.getVideosOperation({ operation: operationName as any });
         
         if (operation.done) {
             const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
